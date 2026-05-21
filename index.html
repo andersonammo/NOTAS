@@ -39,15 +39,13 @@
 
         .main-container { display: flex; flex: 1; overflow: hidden; background-color: var(--bg-workspace); }
 
-        .sidebar { width: 200px; background-color: var(--bg-sidebar); color: var(--text-light); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-size: 13px; transition: width 0.3s ease; white-space: nowrap; }
+        .sidebar { width: 220px; background-color: var(--bg-sidebar); color: var(--text-light); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-size: 13px; transition: width 0.3s ease; white-space: nowrap; border-right: 1px solid #666; }
         .sidebar.recolhido { width: 0px; padding: 0; border: none; } 
         
-        .menu-item { position: relative; list-style: none; padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1); transition: background-color 0.2s; display: flex; justify-content: space-between;}
-        .menu-item:hover { background-color: var(--bg-sidebar-hover); }
+        .menu-category { padding: 12px 15px 5px 15px; font-size: 10px; font-weight: bold; color: #ddd; text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 5px; }
+        .menu-item { position: relative; list-style: none; padding: 12px 15px; cursor: pointer; transition: background-color 0.2s; display: flex; justify-content: space-between; align-items: center;}
+        .menu-item:hover { background-color: var(--bg-sidebar-hover); border-left: 3px solid var(--bg-header); padding-left: 12px; }
         .atalho-teclado { font-size: 9px; color: #ccc; background: rgba(0,0,0,0.2); padding: 2px 4px; border-radius: 3px;}
-
-        .submenu, .sub-submenu { display: none; position: absolute; left: 100%; top: 0; background-color: var(--bg-sidebar); min-width: 220px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); z-index: 100; padding-left: 0; margin: 0; }
-        .menu-item:hover > .submenu, .menu-item.aberto > .submenu { display: block; }
 
         .workspace { flex: 1; padding: 10px; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease;}
 
@@ -162,7 +160,6 @@
     <div class="top-header">
         <div class="header-left">
             <span style="cursor: pointer; font-size: 16px;" onclick="alternarMenuLateral()" title="Recolher/Expandir Menu">&#9776;</span>
-            <input type="text" id="inputBuscaMenu" placeholder="Pesquisa (Ctrl+F)" onkeyup="filtrarMenuRápido()">
             <span>SaaSERP</span>
             
             <select id="seletorGlobalLoja" class="seletor-loja" onchange="mudarLojaPeloHeader()">
@@ -182,35 +179,52 @@
         
         <div class="sidebar" id="menuLateral">
             
-            <div class="menu-item item-buscavel" onclick="window.location.href='./DASHERP'">
+            <div class="menu-category">Geral</div>
+            
+            <div class="menu-item" onclick="window.location.href='./DASHERP'">
                 <span>Dashboard</span>
             </div>
 
-            <div class="menu-item has-children item-buscavel">
-                <span>Operacional</span>
-                <ul class="submenu" onclick="event.stopPropagation()">
-                    <li class="menu-item" onclick="window.location.href='./CAIXA.HTML'">Manutenção de Caixa</li>
-                    <li class="menu-item" onclick="window.location.href='./PEDIDOS.HTML'">Trânsito de Pedidos</li>
-                    <li class="menu-item" onclick="window.location.href='./GARANTIA.HTML'">Emissão de Garantia</li>
-                </ul>
+            <div class="menu-category">Operacional</div>
+
+            <div class="menu-item" onclick="window.location.href='./CAIXA.HTML'">
+                <span>Manutenção de Caixa</span>
             </div>
 
-            <div class="menu-item has-children item-buscavel" onclick="abrirTelaEmCheia('tela-contador')">
-                <span>Fiscal & Estoque</span> <span class="atalho-teclado">F1</span>
-                <ul class="submenu" onclick="event.stopPropagation()">
-                    <li class="menu-item" onclick="abrirTelaEmCheia('tela-nfe')">Emissão NFC-e</li>
-                    <li class="menu-item" onclick="abrirTelaEmCheia('tela-contador')">Área do contador</li>
-                    <li class="menu-item" onclick="abrirTelaEmCheia('tela-entrada-estoque')">Entrada / Estoque</li>
-                </ul>
+            <div class="menu-item" onclick="window.location.href='./PEDIDOS.HTML'">
+                <span>Trânsito de Pedidos</span>
             </div>
 
-            <div class="menu-item has-children item-buscavel">
-                <span>Cadastros</span>
-                <ul class="submenu" onclick="event.stopPropagation()">
-                    <li class="menu-item" onclick="window.location.href='./CADASTROLOJAS.HTML'">Lojas</li>
-                    <li class="menu-item" onclick="window.location.href='./CADPRODTOS.HTML'">Produtos</li>
-                    <li class="menu-item" onclick="window.location.href='./MANUTENÇÃOCOLABORADORES.HTML'">Colaboradores</li>
-                </ul>
+            <div class="menu-item" onclick="window.location.href='./GARANTIA.HTML'">
+                <span>Emissão de Garantia</span>
+            </div>
+
+            <div class="menu-category">Fiscal & Estoque</div>
+
+            <div class="menu-item" onclick="abrirTelaEmCheia('tela-contador')">
+                <span>Área do Contador / Notas</span> <span class="atalho-teclado">F1</span>
+            </div>
+
+            <div class="menu-item" onclick="abrirTelaEmCheia('tela-nfe')">
+                <span>Emissão NFC-e Manual</span>
+            </div>
+
+            <div class="menu-item" onclick="abrirTelaEmCheia('tela-entrada-estoque')">
+                <span>Entrada de Notas XML</span> <span class="atalho-teclado">F2</span>
+            </div>
+
+            <div class="menu-category">Cadastros</div>
+
+            <div class="menu-item" onclick="window.location.href='./CADASTROLOJAS.HTML'">
+                <span>Cadastro Lojas</span>
+            </div>
+
+            <div class="menu-item" onclick="window.location.href='./CADPRODTOS.HTML'">
+                <span>Cadastro Produtos</span>
+            </div>
+
+            <div class="menu-item" onclick="window.location.href='./MANUTENÇÃOCOLABORADORES.HTML'">
+                <span>Colaboradores</span>
             </div>
             
         </div>
@@ -219,7 +233,7 @@
             <div id="tela-boas-vindas" style="padding: 20px;">
                 <h2 style="color: #333;">Dashboard SaaSERP (Modo Multiloja)</h2>
                 <p>Você está conectado exclusivamente no banco de dados da loja: <b id="lblLojaBoasVindas">...</b>.</p>
-                <p>Selecione uma opção no menu lateral ou use os Atalhos de Teclado (F1, F2...).</p>
+                <p>Selecione uma opção no menu lateral para iniciar.</p>
             </div>
 
             <div id="tela-contador" class="window-panel">
