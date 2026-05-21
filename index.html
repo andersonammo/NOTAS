@@ -1,0 +1,1151 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>SaaSERP - Módulo Fiscal e Estoque Multiloja</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    
+    <style>
+        /* =========================================================
+           ESTILOS GLOBAIS E CORES DO SISTEMA
+           ========================================================= */
+        :root {
+            --bg-sidebar: #888888;
+            --bg-sidebar-hover: #777777;
+            --bg-header: #f38220; 
+            --bg-panel-header: #f38220;
+            --text-light: #ffffff;
+            --bg-workspace: #e8e8e8;
+            --border-color: #cccccc;
+            --font-sm: 11px;
+        }
+
+        body, html { 
+            margin: 0; padding: 0; 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            height: 100vh; display: flex; flex-direction: column; 
+            font-size: var(--font-sm); overflow: hidden;
+        }
+
+        .top-header { background-color: var(--bg-header); color: var(--text-light); height: 40px; display: flex; align-items: center; padding: 0 15px; justify-content: space-between; font-size: 13px;}
+        .header-left { display: flex; align-items: center; gap: 15px; font-weight: bold; }
+        .header-left input[type="text"] { padding: 4px 8px; border-radius: 15px; border: none; outline: none; width: 180px; font-size: 12px; }
+        
+        .seletor-loja { background: white; color: #333; padding: 3px 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 12px; cursor: pointer; outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .header-icons span { margin-left: 10px; cursor: pointer; }
+
+        .main-container { display: flex; flex: 1; overflow: hidden; background-color: var(--bg-workspace); }
+
+        .sidebar { width: 200px; background-color: var(--bg-sidebar); color: var(--text-light); display: flex; flex-direction: column; overflow-y: auto; overflow-x: hidden; font-size: 13px; transition: width 0.3s ease; white-space: nowrap; }
+        .sidebar.recolhido { width: 0px; padding: 0; border: none; } 
+        
+        .menu-item { position: relative; list-style: none; padding: 10px 15px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.1); transition: background-color 0.2s; display: flex; justify-content: space-between;}
+        .menu-item:hover { background-color: var(--bg-sidebar-hover); }
+        .atalho-teclado { font-size: 9px; color: #ccc; background: rgba(0,0,0,0.2); padding: 2px 4px; border-radius: 3px;}
+
+        .submenu, .sub-submenu { display: none; position: absolute; left: 100%; top: 0; background-color: var(--bg-sidebar); min-width: 220px; box-shadow: 2px 2px 5px rgba(0,0,0,0.3); z-index: 100; padding-left: 0; margin: 0; }
+        .menu-item:hover > .submenu, .menu-item.aberto > .submenu { display: block; }
+
+        .workspace { flex: 1; padding: 10px; display: flex; flex-direction: column; overflow: hidden; transition: all 0.3s ease;}
+
+        .window-panel { background: #f4f4f4; border: 1px solid var(--border-color); display: none; flex-direction: column; height: 100%; box-shadow: 0px 4px 10px rgba(0,0,0,0.2);}
+        .window-title { background-color: var(--bg-panel-header); color: white; padding: 5px 10px; font-weight: bold; display: flex; justify-content: space-between; align-items: center;}
+        
+        .window-controls span { cursor: pointer; margin-left: 8px; font-size: 14px; transition: color 0.2s; }
+        .window-controls span:hover { color: #ffe0b2; }
+        
+        .window-body { display: flex; flex: 1; padding: 10px; gap: 10px; overflow: hidden; }
+
+        .left-col { width: 180px; background: white; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
+        .panel-header { background-color: var(--bg-panel-header); color: white; padding: 5px; text-align: center; font-weight: bold; }
+        .tree-view { list-style: none; padding: 10px; margin: 0; overflow-y: auto; }
+        .tree-folder { font-weight: bold; margin-bottom: 5px; cursor: pointer; }
+        .tree-item { margin-left: 15px; padding: 3px 0; cursor: pointer; color: #444; }
+        .tree-item:hover { color: var(--bg-header); }
+
+        .right-col { flex: 1; background: white; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden;}
+        .filters { padding: 8px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; background: #f9f9f9; border-bottom: 1px solid var(--border-color); }
+        .filters input, .filters select, .filters button { padding: 3px 8px; border: 1px solid var(--border-color); font-size: 11px; }
+        .filters button { background: white; cursor: pointer; font-weight: bold; border-radius: 4px; }
+        .filters button:hover { background: #eee; }
+        .btn-destaque { background: var(--bg-header) !important; color: white !important; border: none !important; }
+        .btn-destaque:hover { background: #d97015 !important; }
+
+        .table-container { flex: 1; overflow-y: auto; overflow-x: auto; position: relative; }
+        table { width: 100%; border-collapse: collapse; min-width: 900px; }
+        th { background-color: var(--bg-panel-header); color: white; padding: 6px; text-align: left; position: sticky; top: 0; white-space: nowrap; border-right: 1px solid rgba(255,255,255,0.3);}
+        td { padding: 6px; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;}
+        .col-chave { max-width: 200px; font-family: monospace; font-size: 10px;}
+        .col-natureza { max-width: 250px; }
+
+        .footer-totals { padding: 5px 10px; background: #f9f9f9; border-top: 1px solid var(--border-color); display: flex; gap: 15px; }
+        .footer-totals input { width: 80px; text-align: right; border: 1px solid #ccc; background: #eee; font-weight: bold;}
+        .footer-actions { padding: 10px; background: #fff; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;}
+        
+        .action-buttons { display: flex; gap: 10px; }
+        .btn-action { padding: 6px 12px; border: 1px solid #aaa; background: #f9f9f9; cursor: pointer; font-weight: bold; font-size: 11px; display: flex; align-items: center; gap: 5px; color: #333;}
+        .btn-action:hover { background: #e0e0e0; }
+
+        .btn-link { color: #fff; padding: 3px 6px; border-radius: 3px; font-weight: bold; cursor: pointer; font-size: 10px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid transparent; text-decoration: none;}
+        .btn-xml { background: #4CAF50; border-color: #4CAF50; }
+        .btn-xml:hover { background: #45a049; }
+        .btn-canc { background: #d32f2f; border-color: #d32f2f; }
+        .btn-canc:hover { background: #b71c1c; }
+
+        .btn-danfe { background: #1565c0; border-color: #1565c0; }
+        .btn-danfe:hover { background: #0d47a1; }
+        .btn-print { background: #6a1b9a; border-color: #6a1b9a; }
+        .btn-print:hover { background: #4a148c; }
+        .btn-muted { background: #757575; border-color: #757575; }
+        .badge-status { display:inline-block; padding:2px 6px; border-radius:10px; color:white; font-size:10px; font-weight:bold; text-transform:uppercase; }
+        .badge-autorizado { background:#2e7d32; }
+        .badge-processando { background:#ef6c00; }
+        .badge-cancelado, .badge-erro, .badge-rejeitado { background:#c62828; }
+        .badge-outro { background:#616161; }
+        .resumo-fiscal { display:flex; gap:8px; flex-wrap:wrap; padding:6px 8px; background:#fff7ef; border-bottom:1px solid var(--border-color); font-weight:bold; }
+        .resumo-fiscal span { background:white; border:1px solid #eee; border-radius:4px; padding:4px 8px; }
+        .campo-busca-fiscal { min-width:220px; }
+        @media print {
+            body, html { overflow: visible; height:auto; }
+            .top-header, .sidebar, .footer-actions, .filters, .left-col, .system-footer, #tela-login { display:none !important; }
+            .workspace, .main-container, .window-panel, .right-col, .window-body { display:block !important; height:auto !important; overflow:visible !important; border:none !important; box-shadow:none !important; }
+            th { position:static; }
+        }
+        .btn-link:disabled { border-color: #ccc; color: #ccc; cursor: not-allowed; background: transparent; }
+
+        .system-footer { background: #444; color: #ccc; height: 25px; display: flex; justify-content: space-between; align-items: center; padding: 0 15px; font-size: 11px; }
+        
+        /* Overlay de Loading */
+        #loadingOverlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); color: white; display: none; align-items: center; justify-content: center; z-index: 9999; font-size: 18px; font-weight: bold; flex-direction: column;}
+        .spinner { border: 4px solid rgba(255,255,255,0.3); border-top: 4px solid white; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 10px;}
+        
+        /* TELA DE LOGIN OVERLAY */
+        #tela-login { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(135deg, rgba(243,130,32,0.9), rgba(51,51,51,0.9)); z-index: 10000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+        .login-box { background: #fff; padding: 40px 30px; border-radius: 12px; width: 320px; box-shadow: 0px 10px 25px rgba(0,0,0,0.3); text-align: center; }
+        .login-box h2 { margin-top: 0; color: #333; font-size: 22px; margin-bottom: 25px; }
+        .login-box input, .login-box select { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-size: 14px; outline: none; }
+        .login-box input:focus, .login-box select:focus { border-color: var(--bg-header); }
+        .login-box button { width: 100%; background: var(--bg-header); color: white; border: none; padding: 12px; border-radius: 6px; font-size: 16px; font-weight: bold; cursor: pointer; transition: background 0.3s; }
+        .login-box button:hover { background: #d97015; }
+        .login-status { color: #d32f2f; font-weight: bold; margin-top: 10px; font-size: 12px; min-height: 15px; }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+
+    <!-- OVERLAY DE LOGIN -->
+    <div id="tela-login">
+        <div class="login-box">
+            <h2>🔐 SaaSERP Multiloja</h2>
+            
+            <label style="display:block; text-align:left; font-size: 11px; font-weight:bold; color:#666; margin-bottom: 5px;">Selecione a Filial:</label>
+            <select id="loginLojaSelect">
+                <option value="">Carregando banco de rede...</option>
+            </select>
+            
+            <input type="text" id="loginUser" placeholder="Usuário / Login" onkeypress="verificarEnter(event)">
+            <input type="password" id="loginPass" placeholder="Senha" onkeypress="verificarEnter(event)">
+            
+            <button id="btnEntrar" onclick="fazerLogin()">Entrar no Sistema</button>
+            <div id="loginStatusMsg" class="login-status"></div>
+        </div>
+    </div>
+
+    <div id="loadingOverlay">
+        <div class="spinner"></div>
+        <span id="loadingMsg">Processando...</span>
+    </div>
+
+    <div class="top-header">
+        <div class="header-left">
+            <span style="cursor: pointer; font-size: 16px;" onclick="alternarMenuLateral()" title="Recolher/Expandir Menu">&#9776;</span>
+            <input type="text" id="inputBuscaMenu" placeholder="Pesquisa (Ctrl+F)" onkeyup="filtrarMenuRápido()">
+            <span>SaaSERP</span>
+            
+            <!-- SELETOR GLOBAL DE LOJAS (Somente leitura visual, mudança exige re-login) -->
+            <select id="seletorGlobalLoja" class="seletor-loja" onchange="mudarLojaPeloHeader()">
+                <option value="">Carregando banco de rede...</option>
+            </select>
+            
+            <span id="nomeUsuarioLogado" style="background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 15px;">&#128100; Visitante</span>
+        </div>
+        <div class="header-icons">
+            <span onclick="sairDoSistema()" title="Sair / Trocar de Loja">🚪 Sair</span>
+            <span>&#9881;</span><span>&#128269;</span><span>&#10067;</span><span>&#128187;</span><span>&#9208;</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        
+        <div class="sidebar" id="menuLateral">
+            <div class="menu-item has-children item-buscavel" onclick="abrirTelaEmCheia('tela-contador')">
+                <span>Fiscal</span> <span class="atalho-teclado">F1</span>
+                <ul class="submenu" onclick="event.stopPropagation()">
+                    <li class="menu-item" onclick="abrirTelaEmCheia('tela-nfe')">Emissão NFC-e</li>
+                    <li class="menu-item" onclick="abrirTelaEmCheia('tela-contador')">Área do contador</li>
+                </ul>
+            </div>
+            
+            <div class="menu-item item-buscavel" onclick="abrirTelaEmCheia('tela-entrada-estoque')">
+                <span>Entrada de Notas / Estoque</span> <span class="atalho-teclado">F2</span>
+            </div>
+            
+            <div class="menu-item item-buscavel" onclick="alert('Módulo de Produtos em desenvolvimento...')">
+                <span>Produtos</span> <span class="atalho-teclado">F3</span>
+            </div>
+        </div>
+
+        <div class="workspace">
+            
+            <div id="tela-boas-vindas" style="padding: 20px;">
+                <h2 style="color: #333;">Dashboard SaaSERP (Modo Multiloja)</h2>
+                <p>Você está conectado exclusivamente no banco de dados da loja: <b id="lblLojaBoasVindas">...</b>.</p>
+                <p>Selecione uma opção no menu lateral ou use os Atalhos de Teclado (F1, F2...).</p>
+            </div>
+
+            <!-- TELA: AREA DO CONTADOR -->
+            <div id="tela-contador" class="window-panel">
+                <div class="window-title">
+                    <span>Exportação XML e Consulta Sefaz</span>
+                    <div class="window-controls">
+                        <span title="Fechar Janela" onclick="fecharTelaGeral()">&#10006;</span>
+                    </div>
+                </div>
+                
+                <div class="window-body">
+                    <div class="left-col">
+                        <div class="panel-header">Classificação</div>
+                        <ul class="tree-view">
+                            <li class="tree-folder">&#128194; Notas fiscais</li>
+                            <li class="tree-item" onclick="carregarNotasFiscaisSefaz()">&#128462; SEFAZ / Focus NFe</li>
+                            <li class="tree-item" onclick="pesquisarNotas()">&#128462; PDV legado</li>
+                            <li class="tree-item" onclick="imprimirRelatorioNotas()">&#128424; Imprimir relatório</li>
+                        </ul>
+                    </div>
+
+                    <div class="right-col">
+                        <div class="filters">
+                            <label>Data emissão:</label>
+                            <input type="date" id="dataInicio" onchange="aplicarFiltrosNotas()">
+                            <label>à</label>
+                            <input type="date" id="dataFim" onchange="aplicarFiltrosNotas()">
+                            <label>Status:</label>
+                            <select id="filtroStatusFiscal" onchange="aplicarFiltrosNotas()">
+                                <option value="">Todos</option>
+                                <option value="autorizado">Autorizadas</option>
+                                <option value="processando">Processando</option>
+                                <option value="cancelado">Canceladas</option>
+                                <option value="rejeitado">Rejeitadas/Erro</option>
+                            </select>
+                            <label>Modelo:</label>
+                            <select id="filtroModeloFiscal" onchange="aplicarFiltrosNotas()">
+                                <option value="">Todos</option>
+                                <option value="NFC-e">NFC-e</option>
+                                <option value="NF-e">NF-e</option>
+                                <option value="NFS-e">NFS-e</option>
+                            </select>
+                            <input type="text" id="buscaFiscalTexto" class="campo-busca-fiscal" placeholder="Buscar nº, referência, chave, cliente..." onkeyup="aplicarFiltrosNotas()">
+                            <button onclick="sincronizarTodasNotasSefazFocus()" class="btn-destaque">Sincronizar todas do período</button>
+                            <button onclick="carregarNotasFiscaisSefaz()">Consultar notas já gravadas</button>
+                            <button onclick="pesquisarNotas()">PDV legado</button>
+                            <span id="status-geral" style="color:var(--bg-header); font-weight:bold; margin-left:10px;"></span>
+                        </div>
+                        <div class="resumo-fiscal" id="resumoFiscal">
+                            <span>Loja ativa: <b id="resumoLojaFiscal">-</b></span>
+                            <span>Autorizadas: <b id="resumoAutorizadas">0</b></span>
+                            <span>Canceladas: <b id="resumoCanceladas">0</b></span>
+                            <span>Com erro/rejeição: <b id="resumoErros">0</b></span>
+                        </div>
+                        
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th style="width:25px; text-align: center;"><input type="checkbox" id="checkAll" onclick="selecionarTudo(this)"></th>
+                                        <th>Tipo</th>
+                                        <th>Origem</th>
+                                        <th>Mod.</th>
+                                        <th>Série</th>
+                                        <th>Nr. nota / Ref.</th>
+                                        <th>Emissão</th>
+                                        <th>Vlr. total</th>
+                                        <th>Chave</th>
+                                        <th>Status Sefaz</th>
+                                        <th style="text-align: center;">Ação</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelaCorpo"></tbody>
+                            </table>
+                            <div id="tabelaVazia" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#999;">Nenhuma nota carregada. Use os botões de busca acima.</div>
+                        </div>
+
+                        <div class="footer-totals">
+                            <span>Qtde. listada: <input type="text" id="totalQtd" disabled value="0"></span>
+                            <span>Vlr. listado: <input type="text" id="totalValor" disabled value="0,00"></span>
+                        </div>
+
+                        <div class="footer-actions">
+                            <div style="font-weight: bold; font-size: 11px;">Certificado: <select style="border:1px solid #ccc;"><option>A1 - Focus NFe</option></select></div>
+                            <div class="action-buttons">
+                                <button class="btn-action" onclick="baixarXMLsEmZip()">&#128190; XMLs selecionados ZIP</button>
+                                <button class="btn-action" onclick="baixarDanfesEmZip()">&#128462; DANFEs selecionados ZIP</button>
+                                <button class="btn-action" onclick="baixarRelatorioCsv()">&#128196; Baixar CSV</button>
+                                <button class="btn-action" style="color: #6a1b9a; border-color: #6a1b9a;" onclick="imprimirRelatorioNotas()">&#128424; Imprimir relatório</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: ENTRADA DE NOTAS E ESTOQUE -->
+            <div id="tela-entrada-estoque" class="window-panel">
+                <div class="window-title">
+                    <span>Lançamento de Nota de Entrada (Importação de XML)</span>
+                    <div class="window-controls">
+                        <span title="Fechar Janela" onclick="fecharTelaGeral()">&#10006;</span>
+                    </div>
+                </div>
+                
+                <div class="window-body" style="flex-direction: column;">
+                    <div style="background: white; border: 1px solid var(--border-color); padding: 15px; display: flex; gap: 20px; align-items: center;">
+                        <div style="flex: 1;">
+                            <h3 style="margin-top: 0; color: var(--bg-header);">1. Importar Arquivo XML</h3>
+                            <input type="file" id="arquivoXmlEntrada" accept=".xml" style="border: 1px solid #ccc; padding: 5px; width: 100%;" onchange="lerXmlDeEntrada(event)">
+                        </div>
+                        <div style="flex: 1; border-left: 1px solid #eee; padding-left: 20px;">
+                            <h3 style="margin-top: 0; color: #555;">Dados do Fornecedor</h3>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                                <div><label style="font-weight:bold; color:#777;">CNPJ:</label><br><span id="forn-cnpj">-</span></div>
+                                <div><label style="font-weight:bold; color:#777;">Razão Social:</label><br><span id="forn-nome">-</span></div>
+                                <div><label style="font-weight:bold; color:#777;">Chave de Acesso:</label><br><span id="forn-chave">-</span></div>
+                                <div><label style="font-weight:bold; color:#777;">Data Emissão:</label><br><span id="forn-data">-</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: white; border: 1px solid var(--border-color); display: flex; flex-direction: column; flex: 1; overflow: hidden;">
+                        <div class="panel-header" style="background: #555;">2. Produtos identificados na Nota Fiscal</div>
+                        <div class="table-container">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Cód. Fornecedor</th><th>Descrição do Produto</th><th>NCM</th><th>CFOP</th><th>UN</th><th>Qtde</th><th>Vlr. Unitário</th><th>Vlr. Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabelaProdutosEntrada"></tbody>
+                            </table>
+                            <div id="msgTabelaEntradaVazia" style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); color:#999;">Nenhum XML importado ainda.</div>
+                        </div>
+
+                        <div class="footer-actions" style="justify-content: flex-end; background: #eee;">
+                            <span style="margin-right: 15px; font-size: 14px; font-weight: bold;">Total da Nota: R$ <span id="valorTotalNotaEntrada">0,00</span></span>
+                            <button class="btn-action" style="background: var(--bg-header); color: white; border: none; padding: 10px 20px;" onclick="salvarProdutosNoEstoque()">&#128427; Lançar no BD Desta Loja</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TELA: EMISSAO NFCE -->
+            <div id="tela-nfe" class="window-panel" style="max-width: 500px; height: auto;">
+                 <div class="window-title">
+                    <span>Emissão Manual NFC-e</span>
+                    <span style="cursor: pointer;" onclick="fecharTelaGeral()">&#10006;</span>
+                </div>
+                <div style="padding: 20px;">
+                    <div style="margin-bottom: 10px;"><label>Cliente</label><br><input type="text" id="inputCliente" style="width: 100%; padding:5px;"></div>
+                    <div style="margin-bottom: 10px;"><label>Valor Total</label><br><input type="number" id="inputValor" style="width: 100%; padding:5px;"></div>
+                    <button onclick="enviarDadosProGS()" style="width: 100%; padding:10px; background: #f38220; color:white; font-weight:bold; border:none; cursor:pointer;">Emitir Nota (BD Loja Atual)</button>
+                    <div id="mensagem-retorno" style="margin-top:10px; text-align:center; font-weight:bold;"></div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // =========================================================
+        // 1. CONFIGURAÇÕES MULTILOJA (REDE)
+        // =========================================================
+        const URL_BD_GERAL = 'https://script.google.com/macros/s/AKfycbzciM5IA25tZ9CcRkwj0-okP5CQ0IG3wpmZeT40vbPGiCtovD3au5Ccgr9jTxcJhSc6/exec';
+
+        const LOJAS_CONFIG_LOCAL = [
+            { nome: "Selecione a Loja...", url: "" },
+            { nome: "Umuarama (Matriz)", url: "https://script.google.com/macros/s/AKfycbxl_T0iTsrmHCeuLp6tcSMT9BxSaWEcd_nXAvZVgFsfsN1ioQVgKNS_SRFwqdCRqyUA/exec" },
+            { nome: "Nova Olímpia", url: "https://script.google.com/macros/s/AKfycbyt7EnnYa60CW4T200XHZacfHqDPHQ8OFHexSwMf14jR-W_eqDh-NMhaY_bCxaze2RLpA/exec" }
+        ];
+
+        let urlApiAtiva = "";
+        let nomeLojaAtiva = "";
+        let usuarioLogado = "";
+        let notasFiscaisCarregadas = [];
+        let notasFiscaisFiltradas = [];
+        let mapaNotasPorId = new Map();
+
+        document.addEventListener("DOMContentLoaded", async () => {
+            preencherDatasPadrao();
+            try {
+                const resp = await fetch(URL_BD_GERAL, { method: 'POST', body: JSON.stringify({ acao: 'listar_lojas' }) });
+                const json = await resp.json();
+                if (json.sucesso && json.lojas && json.lojas.length) renderizarSeletorLojas(json.lojas);
+                else renderizarSeletorLojas(LOJAS_CONFIG_LOCAL);
+            } catch (e) {
+                renderizarSeletorLojas(LOJAS_CONFIG_LOCAL);
+            }
+        });
+
+        function preencherDatasPadrao() {
+            const hoje = new Date();
+            const inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const fmt = d => d.toISOString().substring(0, 10);
+            const dataInicio = document.getElementById('dataInicio');
+            const dataFim = document.getElementById('dataFim');
+            if (dataInicio && !dataInicio.value) dataInicio.value = fmt(inicio);
+            if (dataFim && !dataFim.value) dataFim.value = fmt(hoje);
+        }
+
+        function renderizarSeletorLojas(listaDeLojas) {
+            const selectLogin = document.getElementById('loginLojaSelect');
+            const selectHeader = document.getElementById('seletorGlobalLoja');
+            selectLogin.innerHTML = '';
+            selectHeader.innerHTML = '';
+            listaDeLojas.forEach(loja => {
+                const optLogin = document.createElement('option');
+                const optHeader = document.createElement('option');
+                optLogin.value = optHeader.value = loja.url || '';
+                optLogin.text = optHeader.text = loja.nome || 'Loja sem nome';
+                selectLogin.appendChild(optLogin);
+                selectHeader.appendChild(optHeader);
+            });
+        }
+
+        // =========================================================
+        // 2. LOGIN ISOLADO POR LOJA
+        // =========================================================
+        function verificarEnter(event) { if (event.key === "Enter") fazerLogin(); }
+
+        async function fazerLogin() {
+            const selectLogin = document.getElementById('loginLojaSelect');
+            const urlSelecionada = selectLogin.value;
+            const nomeDaLoja = selectLogin.options[selectLogin.selectedIndex]?.text || '';
+            const user = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value.trim();
+            const msgStatus = document.getElementById('loginStatusMsg');
+            const btn = document.getElementById('btnEntrar');
+
+            if (!urlSelecionada) { msgStatus.innerText = "Selecione a filial primeiro."; return; }
+            if (!user || !pass) { msgStatus.innerText = "Preencha usuário e senha."; return; }
+
+            msgStatus.innerText = "Aguarde, autenticando no banco da loja...";
+            msgStatus.style.color = "#333";
+            btn.disabled = true;
+
+            try {
+                const response = await fetch(urlSelecionada, {
+                    method: 'POST',
+                    body: JSON.stringify({ acao: 'login', usuario: user, senha: pass })
+                });
+                const json = await response.json();
+
+                if (json.status === 'sucesso') {
+                    urlApiAtiva = urlSelecionada;
+                    nomeLojaAtiva = nomeDaLoja;
+                    usuarioLogado = json.nome || user;
+                    document.getElementById('seletorGlobalLoja').value = urlApiAtiva;
+                    document.getElementById('nomeUsuarioLogado').innerHTML = `&#128100; ${String(usuarioLogado).split(' ')[0]}`;
+                    document.getElementById('lblLojaBoasVindas').innerText = nomeLojaAtiva;
+                    const resumoLoja = document.getElementById('resumoLojaFiscal');
+                    if (resumoLoja) resumoLoja.innerText = nomeLojaAtiva;
+                    document.getElementById('tela-login').style.display = 'none';
+                    msgStatus.innerText = "";
+                    document.getElementById('loginPass').value = "";
+                } else {
+                    msgStatus.innerText = "Erro: " + (json.mensagem || "Usuário/Senha incorretos na base desta loja.");
+                    msgStatus.style.color = "#d32f2f";
+                }
+            } catch (error) {
+                msgStatus.innerText = "Erro de conexão com a filial selecionada.";
+                msgStatus.style.color = "#d32f2f";
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        function mudarLojaPeloHeader() {
+            const selectHeader = document.getElementById('seletorGlobalLoja');
+            const urlEscolhida = selectHeader.value;
+            if (urlEscolhida !== urlApiAtiva) {
+                alert("A troca de loja exige nova autenticação por segurança. Cada loja consulta apenas seu próprio banco de dados.");
+                sairDoSistema(urlEscolhida);
+            }
+        }
+
+        function sairDoSistema(forcarLoja = "") {
+            urlApiAtiva = ""; nomeLojaAtiva = ""; usuarioLogado = "";
+            notasFiscaisCarregadas = []; notasFiscaisFiltradas = []; mapaNotasPorId.clear();
+            const corpo = document.getElementById('tabelaCorpo');
+            if (corpo) corpo.innerHTML = '';
+            document.getElementById('tela-login').style.display = 'flex';
+            if (forcarLoja) document.getElementById('loginLojaSelect').value = forcarLoja;
+        }
+
+        function validarSessao() {
+            if (!urlApiAtiva) {
+                document.getElementById('tela-login').style.display = 'flex';
+                alert("Nenhuma loja está ativa. Faça login na filial desejada.");
+                return false;
+            }
+            return true;
+        }
+
+        // =========================================================
+        // 3. NAVEGAÇÃO
+        // =========================================================
+        function alternarMenuLateral() { document.getElementById('menuLateral').classList.toggle('recolhido'); }
+        function abrirTelaEmCheia(idTela) {
+            ['tela-boas-vindas', 'tela-nfe', 'tela-contador', 'tela-entrada-estoque'].forEach(id => document.getElementById(id).style.display = 'none');
+            document.getElementById(idTela).style.display = 'flex';
+            document.getElementById('menuLateral').classList.add('recolhido');
+        }
+        function fecharTelaGeral() {
+            ['tela-nfe', 'tela-contador', 'tela-entrada-estoque'].forEach(id => document.getElementById(id).style.display = 'none');
+            document.getElementById('tela-boas-vindas').style.display = 'block';
+            document.getElementById('menuLateral').classList.remove('recolhido');
+        }
+
+        // =========================================================
+        // 4. API DA LOJA ATIVA
+        // =========================================================
+        async function chamarApiLojaGet(acao, parametros = {}) {
+            const url = new URL(urlApiAtiva);
+            url.searchParams.set('apiCaixa', 'true');
+            url.searchParams.set('acao', acao);
+            Object.entries(parametros).forEach(([k, v]) => {
+                if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v);
+            });
+            const response = await fetch(url.toString());
+            return await response.json();
+        }
+
+        async function chamarApiLojaPost(payload) {
+            const response = await fetch(urlApiAtiva, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            });
+            return await response.json();
+        }
+
+        function limparTexto(valor) {
+            return String(valor === undefined || valor === null ? '' : valor);
+        }
+
+        function escaparHtml(valor) {
+            return limparTexto(valor)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function normalizarStatusFiscal(status) {
+            const s = limparTexto(status).toLowerCase();
+            if (s.includes('autoriz')) return 'autorizado';
+            if (s.includes('process')) return 'processando';
+            if (s.includes('cancel')) return 'cancelado';
+            if (s.includes('rejeit') || s.includes('erro') || s.includes('deneg')) return 'rejeitado';
+            return s || 'outro';
+        }
+
+        function formatarMoeda(valor) {
+            const n = parseFloat(limparTexto(valor).replace(/\./g, '').replace(',', '.')) || 0;
+            return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function valorNumerico(valor) {
+            if (typeof valor === 'number') return valor;
+            return parseFloat(limparTexto(valor).replace(/R\$/g, '').replace(/\./g, '').replace(',', '.').trim()) || 0;
+        }
+
+        function formatarDataBR(valor) {
+            const texto = limparTexto(valor);
+            if (!texto) return '-';
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(texto)) return texto.substring(0, 10);
+            const data = new Date(texto);
+            if (!isNaN(data.getTime())) return data.toLocaleDateString('pt-BR');
+            return texto.substring(0, 10);
+        }
+
+        function dataParaComparacao(valor) {
+            const texto = limparTexto(valor);
+            if (!texto) return null;
+            if (/^\d{2}\/\d{2}\/\d{4}/.test(texto)) {
+                const [d, m, a] = texto.substring(0, 10).split('/');
+                return `${a}-${m}-${d}`;
+            }
+            if (/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.substring(0, 10);
+            const data = new Date(texto);
+            if (!isNaN(data.getTime())) return data.toISOString().substring(0, 10);
+            return null;
+        }
+
+        function idSeguroNota(nota, indice) {
+            return btoa(unescape(encodeURIComponent(`${nota.referencia || ''}|${nota.chave_acesso || ''}|${nota.numero || ''}|${indice}`))).replace(/=/g, '');
+        }
+
+        function badgeStatus(status) {
+            const normal = normalizarStatusFiscal(status);
+            const classe = ['autorizado','processando','cancelado','rejeitado'].includes(normal) ? normal : 'outro';
+            return `<span class="badge-status badge-${classe}">${escaparHtml(status || normal)}</span>`;
+        }
+
+        // =========================================================
+        // 5. MÓDULO FISCAL SEFAZ / FOCUS NFE MULTILOJA
+        // =========================================================
+        function periodoFiscalSelecionadoOuMesAtual() {
+            let inicio = document.getElementById('dataInicio').value;
+            let fim = document.getElementById('dataFim').value;
+            if (!inicio || !fim) {
+                const hoje = new Date();
+                const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+                const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+                const pad = n => String(n).padStart(2, '0');
+                if (!inicio) inicio = `${primeiroDia.getFullYear()}-${pad(primeiroDia.getMonth() + 1)}-${pad(primeiroDia.getDate())}`;
+                if (!fim) fim = `${ultimoDia.getFullYear()}-${pad(ultimoDia.getMonth() + 1)}-${pad(ultimoDia.getDate())}`;
+                document.getElementById('dataInicio').value = inicio;
+                document.getElementById('dataFim').value = fim;
+            }
+            return { inicio, fim };
+        }
+
+        async function sincronizarTodasNotasSefazFocus() {
+            if (!validarSessao()) return;
+            const status = document.getElementById('status-geral');
+            const periodo = periodoFiscalSelecionadoOuMesAtual();
+            const confirmar = confirm(
+                `Vou sincronizar as notas da loja ${nomeLojaAtiva} no período de ${periodo.inicio} até ${periodo.fim}.\n\n` +
+                `Recomendação: faça mês a mês para evitar limite de tempo do Google Apps Script.\n\nDeseja continuar?`
+            );
+            if (!confirmar) return;
+
+            status.innerText = `Sincronizando notas da Focus/SEFAZ para ${nomeLojaAtiva}. Aguarde...`;
+            try {
+                const json = await chamarApiLojaPost({
+                    acao: 'sincronizar_notas_focus_backup',
+                    data_inicio: periodo.inicio,
+                    data_fim: periodo.fim,
+                    limite_arquivos: 24
+                });
+                if (!json.sucesso) throw new Error(json.mensagem || 'A sincronização não retornou sucesso.');
+                const erros = Array.isArray(json.erros) && json.erros.length ? ` Erros: ${json.erros.length}.` : '';
+                status.innerText = `Sincronização concluída: ${json.importados || 0} nova(s), ${json.atualizados || 0} atualizada(s), ${json.xmls_lidos || 0} XML(s) lido(s).${erros}`;
+                await carregarNotasFiscaisSefaz();
+            } catch (e) {
+                status.innerText = 'Erro ao sincronizar todas as notas da SEFAZ/Focus: ' + e.message;
+                alert('Não consegui sincronizar todas as notas. Verifique se o backend atualizado foi colado e implantado em cada loja. Detalhe: ' + e.message);
+            }
+        }
+
+        async function carregarNotasFiscaisSefaz() {
+            if (!validarSessao()) return;
+            const corpo = document.getElementById('tabelaCorpo');
+            const txtVazio = document.getElementById('tabelaVazia');
+            const status = document.getElementById('status-geral');
+            corpo.innerHTML = '';
+            txtVazio.style.display = 'block';
+            status.innerText = `Consultando notas da loja ${nomeLojaAtiva}...`;
+
+            try {
+                const json = await chamarApiLojaGet('listar_xml_webhook');
+                if (!json.sucesso) throw new Error(json.mensagem || 'A loja não retornou sucesso.');
+                notasFiscaisCarregadas = (json.dados || []).map((nota, indice) => {
+                    const item = {
+                        id: '',
+                        loja: nomeLojaAtiva,
+                        tipo_movimento: 'Saída',
+                        origem: nota.origem || 'FOCUS/SEFAZ',
+                        tipo_documento: nota.tipo_documento || 'NFC-e',
+                        serie: nota.serie || '',
+                        numero: nota.numero || nota.referencia || '',
+                        referencia: nota.referencia || '',
+                        data_emissao: nota.data_emissao || nota.data_autorizacao || nota.data_recebimento || '',
+                        valor_total: nota.valor_total || 0,
+                        chave_acesso: nota.chave_acesso || '',
+                        protocolo: nota.protocolo || '',
+                        status: nota.status || '',
+                        mensagem_sefaz: nota.mensagem_sefaz || '',
+                        url_xml: nota.url_xml || '',
+                        url_danfe: nota.url_danfe || '',
+                        url_qrcode: nota.url_qrcode || '',
+                        nome_destinatario: nota.nome_destinatario || '',
+                        cpf_cnpj_destinatario: nota.cpf_cnpj_destinatario || '',
+                        cnpj_emitente: nota.cnpj_emitente || '',
+                        ultima_atualizacao: nota.ultima_atualizacao || ''
+                    };
+                    item.id = idSeguroNota(item, indice);
+                    return item;
+                });
+                mapaNotasPorId = new Map(notasFiscaisCarregadas.map(n => [n.id, n]));
+                aplicarFiltrosNotas();
+                status.innerText = `${notasFiscaisCarregadas.length} nota(s) carregada(s) da SEFAZ/Focus para ${nomeLojaAtiva}.`;
+            } catch (e) {
+                notasFiscaisCarregadas = [];
+                notasFiscaisFiltradas = [];
+                mapaNotasPorId.clear();
+                renderizarTabelaNotas([]);
+                status.innerText = 'Erro ao consultar as notas fiscais desta loja: ' + e.message;
+            }
+        }
+
+        async function carregarNotasViaWebhook() {
+            return carregarNotasFiscaisSefaz();
+        }
+
+        async function pesquisarNotas() {
+            if (!validarSessao()) return;
+            const corpo = document.getElementById('tabelaCorpo');
+            const txtVazio = document.getElementById('tabelaVazia');
+            const status = document.getElementById('status-geral');
+            corpo.innerHTML = '';
+            txtVazio.style.display = 'block';
+            status.innerText = `Consultando PDV legado da loja ${nomeLojaAtiva}...`;
+
+            try {
+                const json = await chamarApiLojaGet('consultar_focus');
+                const dados = json.dados || [];
+                notasFiscaisCarregadas = dados.map((nota, indice) => {
+                    const item = {
+                        id: '', loja: nomeLojaAtiva, tipo_movimento: 'Saída', origem: 'PDV legado', tipo_documento: 'NFC-e',
+                        serie: '1', numero: nota.numero_nota || '', referencia: nota.referencia || '', data_emissao: nota.data_emissao || '',
+                        valor_total: nota.valor_total || 0, chave_acesso: nota.chave_acesso || '', protocolo: '', status: nota.status || 'AUTORIZADO',
+                        mensagem_sefaz: '', url_xml: '', url_danfe: '', url_qrcode: '', nome_destinatario: '', cpf_cnpj_destinatario: '', cnpj_emitente: '', ultima_atualizacao: ''
+                    };
+                    item.id = idSeguroNota(item, indice);
+                    return item;
+                });
+                mapaNotasPorId = new Map(notasFiscaisCarregadas.map(n => [n.id, n]));
+                aplicarFiltrosNotas();
+                status.innerText = `${notasFiscaisCarregadas.length} registro(s) do PDV legado carregado(s). Para XML/DANFE, prefira a consulta SEFAZ/Focus.`;
+            } catch (e) {
+                status.innerText = 'Erro ao consultar o PDV legado desta loja.';
+            }
+        }
+
+        function aplicarFiltrosNotas() {
+            const inicio = document.getElementById('dataInicio')?.value || '';
+            const fim = document.getElementById('dataFim')?.value || '';
+            const statusFiltro = document.getElementById('filtroStatusFiscal')?.value || '';
+            const modeloFiltro = document.getElementById('filtroModeloFiscal')?.value || '';
+            const busca = limparTexto(document.getElementById('buscaFiscalTexto')?.value).toLowerCase().trim();
+
+            notasFiscaisFiltradas = notasFiscaisCarregadas.filter(nota => {
+                const data = dataParaComparacao(nota.data_emissao);
+                const okDataInicio = !inicio || !data || data >= inicio;
+                const okDataFim = !fim || !data || data <= fim;
+                const okStatus = !statusFiltro || normalizarStatusFiscal(nota.status) === statusFiltro;
+                const okModelo = !modeloFiltro || limparTexto(nota.tipo_documento).toUpperCase() === modeloFiltro.toUpperCase();
+                const texto = [nota.numero, nota.referencia, nota.chave_acesso, nota.nome_destinatario, nota.status, nota.mensagem_sefaz, nota.protocolo].join(' ').toLowerCase();
+                const okBusca = !busca || texto.includes(busca);
+                return okDataInicio && okDataFim && okStatus && okModelo && okBusca;
+            });
+            renderizarTabelaNotas(notasFiscaisFiltradas);
+        }
+
+        function renderizarTabelaNotas(lista) {
+            const corpo = document.getElementById('tabelaCorpo');
+            const txtVazio = document.getElementById('tabelaVazia');
+            corpo.innerHTML = '';
+            txtVazio.style.display = lista.length ? 'none' : 'block';
+            let total = 0;
+
+            lista.forEach(nota => {
+                total += valorNumerico(nota.valor_total);
+                const temXml = nota.url_xml || nota.referencia || nota.chave_acesso;
+                const temDanfe = nota.url_danfe || nota.referencia || nota.chave_acesso;
+                const acoes = `
+                    <button class="btn-link btn-xml" ${temXml ? '' : 'disabled'} onclick="baixarArquivoFiscal('${nota.id}', 'xml')">XML</button>
+                    <button class="btn-link btn-danfe" ${temDanfe ? '' : 'disabled'} onclick="baixarArquivoFiscal('${nota.id}', 'danfe')">DANFE</button>
+                    <button class="btn-link btn-print" onclick="imprimirNotaIndividual('${nota.id}')">Relatório</button>
+                    <button class="btn-link btn-muted" title="Diagnosticar download fiscal" onclick="diagnosticarDownloadFiscal('${nota.id}')">Diag.</button>
+                    ${nota.url_qrcode ? `<a class="btn-link btn-muted" target="_blank" href="${escaparHtml(nota.url_qrcode)}">QR</a>` : ''}
+                `;
+                corpo.innerHTML += `
+                    <tr title="${escaparHtml(nota.mensagem_sefaz || '')}">
+                        <td style="text-align:center;"><input type="checkbox" class="nota-check" value="${escaparHtml(nota.id)}"></td>
+                        <td>${escaparHtml(nota.tipo_movimento || 'Saída')}</td>
+                        <td class="col-natureza">${escaparHtml(nota.origem || 'FOCUS/SEFAZ')}</td>
+                        <td>${escaparHtml(nota.tipo_documento || '-')}</td>
+                        <td>${escaparHtml(nota.serie || '-')}</td>
+                        <td>${escaparHtml(nota.numero || nota.referencia || '-')}</td>
+                        <td>${escaparHtml(formatarDataBR(nota.data_emissao))}</td>
+                        <td>${escaparHtml(formatarMoeda(nota.valor_total))}</td>
+                        <td class="col-chave">${escaparHtml(nota.chave_acesso || '-')}</td>
+                        <td>${badgeStatus(nota.status)}</td>
+                        <td style="display:flex; gap:5px; justify-content:center;">${acoes}</td>
+                    </tr>
+                `;
+            });
+
+            document.getElementById('totalQtd').value = lista.length;
+            document.getElementById('totalValor').value = total.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            atualizarResumoFiscal();
+        }
+
+        function atualizarResumoFiscal() {
+            const cont = { autorizado: 0, cancelado: 0, rejeitado: 0 };
+            notasFiscaisFiltradas.forEach(n => {
+                const s = normalizarStatusFiscal(n.status);
+                if (s === 'autorizado') cont.autorizado++;
+                if (s === 'cancelado') cont.cancelado++;
+                if (s === 'rejeitado') cont.rejeitado++;
+            });
+            document.getElementById('resumoLojaFiscal').innerText = nomeLojaAtiva || '-';
+            document.getElementById('resumoAutorizadas').innerText = cont.autorizado;
+            document.getElementById('resumoCanceladas').innerText = cont.cancelado;
+            document.getElementById('resumoErros').innerText = cont.rejeitado;
+        }
+
+        function selecionarTudo(mestre) { document.querySelectorAll('.nota-check').forEach(c => c.checked = mestre.checked); }
+
+        function obterNotasSelecionadas() {
+            return Array.from(document.querySelectorAll('.nota-check:checked'))
+                .map(cb => mapaNotasPorId.get(cb.value))
+                .filter(Boolean);
+        }
+
+        function montarPayloadDownloadFiscal(nota, tipo, acaoForcada) {
+            return {
+                acao: acaoForcada || (tipo === 'danfe' ? 'baixar_danfe' : 'baixar_xml'),
+                referencia: nota.referencia || nota.chave_acesso || nota.numero || '',
+                chave_acesso: nota.chave_acesso || '',
+                tipo_documento: nota.tipo_documento || '',
+                url: tipo === 'danfe' ? (nota.url_danfe || '') : (nota.url_xml || ''),
+                numero: nota.numero || '',
+                serie: nota.serie || '',
+                loja: nomeLojaAtiva || ''
+            };
+        }
+
+        function formatarTentativasDownload(tentativas) {
+            if (!Array.isArray(tentativas) || !tentativas.length) return '';
+            const linhas = tentativas.slice(0, 12).map((t, idx) => {
+                const ok = t && t.sucesso ? 'OK' : 'FALHOU';
+                const etapa = t && t.etapa ? t.etapa : 'etapa';
+                const id = t && (t.identificador || t.referencia || t.chave_acesso) ? ` | id: ${t.identificador || t.referencia || t.chave_acesso}` : '';
+                const http = t && t.codigo_http ? ` | HTTP: ${t.codigo_http}` : '';
+                const msg = t && t.mensagem ? ` | ${t.mensagem}` : '';
+                return `${idx + 1}. ${etapa}: ${ok}${id}${http}${msg}`;
+            });
+            return '\n\nEtapas testadas pelo sistema:\n' + linhas.join('\n');
+        }
+
+        function formatarErroDownloadFiscal(json, tipo, nota) {
+            const mensagem = (json && json.mensagem) || `Não foi possível baixar o ${tipo.toUpperCase()} desta nota.`;
+            const identificador = nota.chave_acesso || nota.referencia || nota.numero || '-';
+            return `${mensagem}\n\nNota/identificador: ${identificador}${formatarTentativasDownload(json && json.tentativas)}`;
+        }
+
+        async function baixarArquivoFiscal(idNota, tipo) {
+            if (!validarSessao()) return;
+            const nota = mapaNotasPorId.get(idNota);
+            if (!nota) return alert('Nota não encontrada na tela. Recarregue a consulta.');
+
+            const status = document.getElementById('status-geral');
+            status.innerText = `Baixando ${tipo.toUpperCase()} da nota ${nota.numero || nota.referencia || nota.chave_acesso || ''}...`;
+            try {
+                const json = await chamarApiLojaPost(montarPayloadDownloadFiscal(nota, tipo));
+                const base64 = json.arquivoBase64 || json.xmlBase64 || json.pdfBase64;
+                if (json.sucesso && base64) {
+                    baixarBase64(base64, json.mimeType || (tipo === 'danfe' ? 'application/pdf' : 'application/xml'), json.nomeArquivo || montarNomeArquivo(nota, tipo));
+                    status.innerText = `${tipo.toUpperCase()} baixado com sucesso.`;
+                    return;
+                }
+                const urlDireta = tipo === 'danfe' ? nota.url_danfe : nota.url_xml;
+                if (urlDireta && (!json || !json.mensagem)) {
+                    window.open(urlDireta, '_blank');
+                    status.innerText = `A loja não retornou arquivo em base64; abri o link direto do ${tipo.toUpperCase()}.`;
+                    return;
+                }
+                alert(formatarErroDownloadFiscal(json, tipo, nota));
+                status.innerText = `Falha ao baixar ${tipo.toUpperCase()}. Veja o aviso exibido na tela.`;
+            } catch (e) {
+                status.innerText = `Erro de comunicação ao baixar ${tipo.toUpperCase()}.`;
+                alert('Erro ao baixar arquivo fiscal: ' + e.message + '\n\nSe você acabou de trocar o código no Apps Script, publique uma nova implantação e atualize esta tela.');
+            }
+        }
+
+        function baixarBase64(base64, mimeType, nomeArquivo) {
+            const binario = atob(base64);
+            const bytes = new Uint8Array(binario.length);
+            for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i);
+            const blob = new Blob([bytes], { type: mimeType });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = nomeArquivo;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+        }
+
+        function montarNomeArquivo(nota, tipo) {
+            const base = limparTexto(nota.chave_acesso || nota.referencia || nota.numero || 'nota_fiscal').replace(/[^a-zA-Z0-9_-]/g, '_');
+            return `${tipo}_${nomeLojaAtiva.replace(/\s+/g, '_')}_${base}.${tipo === 'danfe' ? 'pdf' : 'xml'}`;
+        }
+
+        async function baixarXMLUnico(referencia) {
+            const nota = notasFiscaisCarregadas.find(n => n.referencia === referencia || n.chave_acesso === referencia || n.id === referencia);
+            if (nota) return baixarArquivoFiscal(nota.id, 'xml');
+            const fakeId = idSeguroNota({ referencia }, 0);
+            const item = { id: fakeId, referencia, tipo_documento: 'NFC-e' };
+            mapaNotasPorId.set(fakeId, item);
+            return baixarArquivoFiscal(fakeId, 'xml');
+        }
+
+        async function baixarXMLsEmZip() {
+            return baixarArquivosSelecionadosZip('xml');
+        }
+
+        async function baixarDanfesEmZip() {
+            return baixarArquivosSelecionadosZip('danfe');
+        }
+
+        async function baixarArquivosSelecionadosZip(tipo) {
+            if (!validarSessao()) return;
+            const selecionadas = obterNotasSelecionadas();
+            if (!selecionadas.length) return alert('Selecione as notas na tabela primeiro.');
+            const status = document.getElementById('status-geral');
+            const zip = new JSZip();
+            let adicionados = 0;
+            const falhas = [];
+            status.innerText = `Montando ZIP com ${selecionadas.length} arquivo(s) ${tipo.toUpperCase()}...`;
+
+            for (const nota of selecionadas) {
+                try {
+                    const json = await chamarApiLojaPost(montarPayloadDownloadFiscal(nota, tipo));
+                    const base64 = json.arquivoBase64 || json.xmlBase64 || json.pdfBase64;
+                    if (json.sucesso && base64) {
+                        zip.file(json.nomeArquivo || montarNomeArquivo(nota, tipo), base64, { base64: true });
+                        adicionados++;
+                    } else {
+                        falhas.push(`${nota.numero || nota.referencia || nota.chave_acesso || 'nota sem número'}: ${(json && json.mensagem) || 'arquivo não retornado'}`);
+                    }
+                } catch (e) {
+                    falhas.push(`${nota.numero || nota.referencia || nota.chave_acesso || 'nota sem número'}: ${e.message}`);
+                }
+            }
+
+            if (!adicionados) {
+                status.innerText = 'Nenhum arquivo pôde ser baixado. Verifique as mensagens e execute a sincronização do período.';
+                return alert('Nenhum arquivo foi adicionado ao ZIP.\n\nPrincipais falhas:\n' + falhas.slice(0, 10).join('\n'));
+            }
+
+            const content = await zip.generateAsync({ type: 'blob' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(content);
+            link.download = `${tipo.toUpperCase()}_${nomeLojaAtiva.replace(/\s+/g, '_')}_${new Date().toISOString().substring(0,10)}.zip`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            status.innerText = `ZIP gerado com ${adicionados} arquivo(s).${falhas.length ? ' Algumas notas falharam; veja detalhes no alerta.' : ''}`;
+            if (falhas.length) alert(`ZIP gerado com ${adicionados} arquivo(s).\n\nNotas que não entraram no ZIP:\n` + falhas.slice(0, 15).join('\n'));
+        }
+
+        async function diagnosticarDownloadFiscal(idNota) {
+            if (!validarSessao()) return;
+            const nota = mapaNotasPorId.get(idNota);
+            if (!nota) return alert('Nota não encontrada na tela. Recarregue a consulta.');
+            const status = document.getElementById('status-geral');
+            status.innerText = 'Executando diagnóstico de download fiscal...';
+            try {
+                const json = await chamarApiLojaPost(montarPayloadDownloadFiscal(nota, 'xml', 'diagnosticar_download_fiscal'));
+                const linhas = [
+                    'Diagnóstico de download fiscal',
+                    '',
+                    `Nota/identificador: ${nota.chave_acesso || nota.referencia || nota.numero || '-'}`,
+                    `Encontrou nota na planilha: ${json.encontrou_nota_planilha ? 'sim' : 'não'}`,
+                    `Encontrou XML armazenado: ${json.encontrou_xml_armazenado ? 'sim' : 'não'}`,
+                    `Candidatos testados: ${(json.candidatos_testados || []).join(', ') || '-'}`
+                ];
+                if (json.xml_armazenado) linhas.push(`XML armazenado em: ${json.xml_armazenado.origem || ''} | ${json.xml_armazenado.nomeArquivo || ''}`);
+                if (Array.isArray(json.consultas_focus)) {
+                    linhas.push('', 'Consultas na Focus:');
+                    json.consultas_focus.forEach((c, idx) => linhas.push(`${idx + 1}. ${c.identificador || ''} | ${c.sucesso ? 'OK' : 'FALHOU'} | ${c.endpoint || ''} | HTTP ${c.codigo_http || '-'}`));
+                }
+                alert(linhas.join('\n'));
+                status.innerText = 'Diagnóstico concluído.';
+            } catch (e) {
+                status.innerText = 'Falha no diagnóstico de download fiscal.';
+                alert('Erro ao diagnosticar download fiscal: ' + e.message);
+            }
+        }
+
+        function baixarRelatorioCsv() {
+            const lista = notasFiscaisFiltradas.length ? notasFiscaisFiltradas : notasFiscaisCarregadas;
+            if (!lista.length) return alert('Carregue as notas fiscais antes de gerar o relatório.');
+            const cab = ['Loja','Tipo','Origem','Modelo','Serie','Numero','Referencia','Emissao','Valor','Chave','Protocolo','Status','Mensagem_SEFAZ','Destinatario','CPF_CNPJ_Destinatario','URL_XML','URL_DANFE'];
+            const linhas = [cab].concat(lista.map(n => [
+                nomeLojaAtiva, n.tipo_movimento, n.origem, n.tipo_documento, n.serie, n.numero, n.referencia, formatarDataBR(n.data_emissao),
+                valorNumerico(n.valor_total).toFixed(2).replace('.', ','), n.chave_acesso, n.protocolo, n.status, n.mensagem_sefaz,
+                n.nome_destinatario, n.cpf_cnpj_destinatario, n.url_xml, n.url_danfe
+            ]));
+            const csv = linhas.map(l => l.map(c => '"' + limparTexto(c).replace(/"/g, '""') + '"').join(';')).join('\n');
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `Relatorio_Notas_${nomeLojaAtiva.replace(/\s+/g, '_')}_${new Date().toISOString().substring(0,10)}.csv`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function imprimirRelatorioNotas() {
+            const lista = notasFiscaisFiltradas.length ? notasFiscaisFiltradas : notasFiscaisCarregadas;
+            if (!lista.length) return alert('Carregue as notas fiscais antes de imprimir o relatório.');
+            const total = lista.reduce((s, n) => s + valorNumerico(n.valor_total), 0);
+            const periodo = `${document.getElementById('dataInicio')?.value || 'início'} até ${document.getElementById('dataFim')?.value || 'hoje'}`;
+            const linhas = lista.map(n => `
+                <tr>
+                    <td>${escaparHtml(n.tipo_documento)}</td>
+                    <td>${escaparHtml(n.serie || '')}</td>
+                    <td>${escaparHtml(n.numero || n.referencia || '')}</td>
+                    <td>${escaparHtml(formatarDataBR(n.data_emissao))}</td>
+                    <td>${escaparHtml(formatarMoeda(n.valor_total))}</td>
+                    <td>${escaparHtml(n.chave_acesso || '')}</td>
+                    <td>${escaparHtml(n.status || '')}</td>
+                    <td>${escaparHtml(n.mensagem_sefaz || '')}</td>
+                </tr>`).join('');
+            abrirJanelaImpressao(`
+                <h2>Relatório Fiscal XML / DANFE</h2>
+                <p><b>Loja:</b> ${escaparHtml(nomeLojaAtiva)} &nbsp; <b>Usuário:</b> ${escaparHtml(usuarioLogado)} &nbsp; <b>Período:</b> ${escaparHtml(periodo)}</p>
+                <p><b>Quantidade:</b> ${lista.length} &nbsp; <b>Total:</b> ${formatarMoeda(total)}</p>
+                <table><thead><tr><th>Modelo</th><th>Série</th><th>Número/Ref.</th><th>Emissão</th><th>Valor</th><th>Chave</th><th>Status</th><th>Mensagem SEFAZ</th></tr></thead><tbody>${linhas}</tbody></table>
+            `);
+        }
+
+        function imprimirNotaIndividual(idNota) {
+            const n = mapaNotasPorId.get(idNota);
+            if (!n) return alert('Nota não encontrada na tela.');
+            abrirJanelaImpressao(`
+                <h2>Ficha da Nota Fiscal</h2>
+                <p><b>Loja:</b> ${escaparHtml(nomeLojaAtiva)}</p>
+                <table>
+                    <tbody>
+                        <tr><th>Modelo</th><td>${escaparHtml(n.tipo_documento)}</td><th>Status</th><td>${escaparHtml(n.status)}</td></tr>
+                        <tr><th>Número</th><td>${escaparHtml(n.numero)}</td><th>Série</th><td>${escaparHtml(n.serie)}</td></tr>
+                        <tr><th>Referência</th><td>${escaparHtml(n.referencia)}</td><th>Emissão</th><td>${escaparHtml(formatarDataBR(n.data_emissao))}</td></tr>
+                        <tr><th>Valor</th><td>${escaparHtml(formatarMoeda(n.valor_total))}</td><th>Protocolo</th><td>${escaparHtml(n.protocolo)}</td></tr>
+                        <tr><th>Chave de acesso</th><td colspan="3">${escaparHtml(n.chave_acesso)}</td></tr>
+                        <tr><th>Destinatário</th><td colspan="3">${escaparHtml(n.nome_destinatario || '')} ${escaparHtml(n.cpf_cnpj_destinatario || '')}</td></tr>
+                        <tr><th>Mensagem SEFAZ</th><td colspan="3">${escaparHtml(n.mensagem_sefaz || '')}</td></tr>
+                        <tr><th>XML</th><td colspan="3">${escaparHtml(n.url_xml || '')}</td></tr>
+                        <tr><th>DANFE</th><td colspan="3">${escaparHtml(n.url_danfe || '')}</td></tr>
+                    </tbody>
+                </table>
+            `);
+        }
+
+        function abrirJanelaImpressao(conteudo) {
+            const w = window.open('', '_blank');
+            w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório Fiscal</title>
+                <style>body{font-family:Arial,sans-serif;font-size:12px;color:#222} h2{color:#f38220} table{width:100%;border-collapse:collapse;margin-top:10px} th{background:#f38220;color:#fff;text-align:left} th,td{border:1px solid #ccc;padding:5px;vertical-align:top} @media print{button{display:none}}</style>
+                </head><body>${conteudo}<p style="margin-top:20px;color:#777;">Gerado em ${new Date().toLocaleString('pt-BR')} pelo módulo fiscal multiloja.</p><button onclick="window.print()">Imprimir</button></body></html>`);
+            w.document.close();
+            w.focus();
+        }
+
+        // =========================================================
+        // 6. EMISSÃO MANUAL SIMPLES
+        // =========================================================
+        async function enviarDadosProGS() {
+            if (!validarSessao()) return;
+            const cliente = document.getElementById('inputCliente').value;
+            const valor = document.getElementById('inputValor').value;
+            const msg = document.getElementById('mensagem-retorno');
+            if (!cliente || !valor) return alert('Preencha cliente e valor.');
+            msg.innerText = 'Enviando para BD da loja...';
+            try {
+                const json = await chamarApiLojaPost({ acao: 'emitir_nota', dados: { cliente, valor, loja: nomeLojaAtiva } });
+                msg.innerText = json.mensagem || (json.sucesso ? 'Enviado.' : 'Falhou.');
+                msg.style.color = json.sucesso ? 'green' : 'red';
+                if (json.sucesso) setTimeout(carregarNotasFiscaisSefaz, 1500);
+            } catch (e) { msg.innerText = 'Erro de conexão com BD da filial.'; }
+        }
+
+        // =========================================================
+        // 7. MÓDULO DE ENTRADA E ESTOQUE
+        // =========================================================
+        let listaProdutosNota = [];
+
+        function lerXmlDeEntrada(event) {
+            const arquivo = event.target.files[0];
+            if (!arquivo) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const xmlDoc = new DOMParser().parseFromString(e.target.result, 'text/xml');
+                try {
+                    const emit = xmlDoc.getElementsByTagName('emit')[0];
+                    const ide = xmlDoc.getElementsByTagName('ide')[0];
+                    document.getElementById('forn-cnpj').innerText = emit.getElementsByTagName('CNPJ')[0]?.childNodes[0]?.nodeValue || '-';
+                    document.getElementById('forn-nome').innerText = emit.getElementsByTagName('xNome')[0]?.childNodes[0]?.nodeValue || '-';
+                    document.getElementById('forn-data').innerText = ide.getElementsByTagName('dhEmi')[0]?.childNodes[0]?.nodeValue.substring(0, 10) || '-';
+                    document.getElementById('forn-chave').innerText = xmlDoc.getElementsByTagName('protNFe')[0]?.getElementsByTagName('chNFe')[0]?.childNodes[0]?.nodeValue || '-';
+                    const itensDet = xmlDoc.getElementsByTagName('det');
+                    const tabela = document.getElementById('tabelaProdutosEntrada');
+                    tabela.innerHTML = '';
+                    document.getElementById('msgTabelaEntradaVazia').style.display = 'none';
+                    listaProdutosNota = [];
+                    let soma = 0;
+                    for (let i = 0; i < itensDet.length; i++) {
+                        const p = itensDet[i].getElementsByTagName('prod')[0];
+                        let item = {
+                            codigo: p.getElementsByTagName('cProd')[0]?.childNodes[0]?.nodeValue || '-',
+                            descricao: p.getElementsByTagName('xProd')[0]?.childNodes[0]?.nodeValue || '-',
+                            ncm: p.getElementsByTagName('NCM')[0]?.childNodes[0]?.nodeValue || '-',
+                            cfop: p.getElementsByTagName('CFOP')[0]?.childNodes[0]?.nodeValue || '-',
+                            un: p.getElementsByTagName('uCom')[0]?.childNodes[0]?.nodeValue || '-',
+                            qtde: parseFloat(p.getElementsByTagName('qCom')[0]?.childNodes[0]?.nodeValue || 0),
+                            vlrUnit: parseFloat(p.getElementsByTagName('vUnCom')[0]?.childNodes[0]?.nodeValue || 0),
+                            vlrTotal: parseFloat(p.getElementsByTagName('vProd')[0]?.childNodes[0]?.nodeValue || 0)
+                        };
+                        soma += item.vlrTotal;
+                        listaProdutosNota.push(item);
+                        tabela.innerHTML += `<tr><td>${escaparHtml(item.codigo)}</td><td style="font-weight:bold;">${escaparHtml(item.descricao)}</td><td>${escaparHtml(item.ncm)}</td><td>${escaparHtml(item.cfop)}</td><td>${escaparHtml(item.un)}</td><td>${item.qtde.toFixed(2)}</td><td>R$ ${item.vlrUnit.toFixed(4)}</td><td>R$ ${item.vlrTotal.toFixed(2)}</td></tr>`;
+                    }
+                    document.getElementById('valorTotalNotaEntrada').innerText = soma.toFixed(2).replace('.', ',');
+                } catch (erro) { alert('XML inválido.'); }
+            };
+            reader.readAsText(arquivo);
+        }
+
+        async function salvarProdutosNoEstoque() {
+            if (!validarSessao()) return;
+            if (listaProdutosNota.length === 0) return alert('Importe um XML primeiro.');
+            const btn = document.querySelector('button[onclick="salvarProdutosNoEstoque()"]');
+            btn.innerHTML = 'Salvando...'; btn.disabled = true;
+            const registros = listaProdutosNota.map(item => ({
+                Data_Entrada: document.getElementById('forn-data').innerText,
+                Loja_Destino: nomeLojaAtiva,
+                Fornecedor_CNPJ: document.getElementById('forn-cnpj').innerText,
+                Fornecedor_Nome: document.getElementById('forn-nome').innerText,
+                Chave_NFe: document.getElementById('forn-chave').innerText,
+                Codigo_Prod: item.codigo, Descricao: item.descricao, NCM: item.ncm,
+                CFOP: item.cfop, UN: item.un, Qtde: item.qtde,
+                Vlr_Unitario: item.vlrUnit, Vlr_Total: item.vlrTotal
+            }));
+            try {
+                const retorno = await chamarApiLojaPost({ acao: 'salvar_dados_estoque', dados: registros });
+                if (retorno.sucesso) {
+                    alert(`Salvo com sucesso no BD da filial: ${nomeLojaAtiva}`);
+                    listaProdutosNota = [];
+                    document.getElementById('tabelaProdutosEntrada').innerHTML = '';
+                    document.getElementById('msgTabelaEntradaVazia').style.display = 'block';
+                    document.getElementById('arquivoXmlEntrada').value = '';
+                } else alert('Erro: ' + retorno.mensagem);
+            } catch (error) { alert('Erro de comunicação.'); }
+            finally { btn.innerHTML = '&#128427; Lançar no BD Desta Loja'; btn.disabled = false; }
+        }
+    </script>
+</body>
+</html>
