@@ -33,7 +33,9 @@
         
         .seletor-loja { background: white; color: #333; padding: 3px 8px; border-radius: 4px; border: 1px solid #ccc; font-weight: bold; font-size: 12px; cursor: pointer; outline: none; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
         
-        .header-icons span { margin-left: 10px; cursor: pointer; }
+        .header-icons { display: flex; gap: 15px; font-size: 12px; font-weight: bold; }
+        .header-icons span { cursor: pointer; transition: opacity 0.2s; }
+        .header-icons span:hover { opacity: 0.8; }
 
         .main-container { display: flex; flex: 1; overflow: hidden; background-color: var(--bg-workspace); }
 
@@ -60,8 +62,8 @@
         .left-col { width: 180px; background: white; border: 1px solid var(--border-color); display: flex; flex-direction: column; }
         .panel-header { background-color: var(--bg-panel-header); color: white; padding: 5px; text-align: center; font-weight: bold; }
         .tree-view { list-style: none; padding: 10px; margin: 0; overflow-y: auto; }
-        .tree-folder { font-weight: bold; margin-bottom: 5px; cursor: pointer; }
-        .tree-item { margin-left: 15px; padding: 3px 0; cursor: pointer; color: #444; }
+        .tree-folder { font-weight: bold; margin-bottom: 5px; cursor: pointer; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .tree-item { margin-left: 10px; padding: 5px 0; cursor: pointer; color: #444; }
         .tree-item:hover { color: var(--bg-header); }
 
         .right-col { flex: 1; background: white; border: 1px solid var(--border-color); display: flex; flex-direction: column; overflow: hidden;}
@@ -135,10 +137,9 @@
 </head>
 <body>
 
-    <!-- OVERLAY DE LOGIN -->
     <div id="tela-login">
         <div class="login-box">
-            <h2>🔐 SaaSERP Multiloja</h2>
+            <h2>SaaSERP Multiloja</h2>
             
             <label style="display:block; text-align:left; font-size: 11px; font-weight:bold; color:#666; margin-bottom: 5px;">Selecione a Filial:</label>
             <select id="loginLojaSelect">
@@ -164,39 +165,55 @@
             <input type="text" id="inputBuscaMenu" placeholder="Pesquisa (Ctrl+F)" onkeyup="filtrarMenuRápido()">
             <span>SaaSERP</span>
             
-            <!-- SELETOR GLOBAL DE LOJAS (Somente leitura visual, mudança exige re-login) -->
             <select id="seletorGlobalLoja" class="seletor-loja" onchange="mudarLojaPeloHeader()">
                 <option value="">Carregando banco de rede...</option>
             </select>
             
-            <span id="nomeUsuarioLogado" style="background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 15px;">&#128100; Visitante</span>
+            <span id="nomeUsuarioLogado" style="background: rgba(0,0,0,0.2); padding: 4px 10px; border-radius: 15px;">Usuário: Visitante</span>
         </div>
         <div class="header-icons">
-            <span onclick="sairDoSistema()" title="Sair / Trocar de Loja">🚪 Sair</span>
-            <span>&#9881;</span><span>&#128269;</span><span>&#10067;</span><span>&#128187;</span><span>&#9208;</span>
+            <span onclick="sairDoSistema()" title="Sair / Trocar de Loja">Sair</span>
+            <span title="Configurações">Configurações</span>
+            <span title="Suporte">Suporte</span>
         </div>
     </div>
 
     <div class="main-container">
         
         <div class="sidebar" id="menuLateral">
+            
+            <div class="menu-item item-buscavel" onclick="window.location.href='./DASHERP'">
+                <span>Dashboard</span>
+            </div>
+
+            <div class="menu-item has-children item-buscavel">
+                <span>Operacional</span>
+                <ul class="submenu" onclick="event.stopPropagation()">
+                    <li class="menu-item" onclick="window.location.href='./CAIXA.HTML'">Manutenção de Caixa</li>
+                    <li class="menu-item" onclick="window.location.href='./PEDIDOS.HTML'">Trânsito de Pedidos</li>
+                    <li class="menu-item" onclick="window.location.href='./GARANTIA.HTML'">Emissão de Garantia</li>
+                </ul>
+            </div>
+
             <div class="menu-item has-children item-buscavel" onclick="abrirTelaEmCheia('tela-contador')">
-                <span>Fiscal</span> <span class="atalho-teclado">F1</span>
+                <span>Fiscal & Estoque</span> <span class="atalho-teclado">F1</span>
                 <ul class="submenu" onclick="event.stopPropagation()">
                     <li class="menu-item" onclick="abrirTelaEmCheia('tela-nfe')">Emissão NFC-e</li>
                     <li class="menu-item" onclick="abrirTelaEmCheia('tela-contador')">Área do contador</li>
+                    <li class="menu-item" onclick="abrirTelaEmCheia('tela-entrada-estoque')">Entrada / Estoque</li>
+                </ul>
+            </div>
+
+            <div class="menu-item has-children item-buscavel">
+                <span>Cadastros</span>
+                <ul class="submenu" onclick="event.stopPropagation()">
+                    <li class="menu-item" onclick="window.location.href='./CADASTROLOJAS.HTML'">Lojas</li>
+                    <li class="menu-item" onclick="window.location.href='./CADPRODTOS.HTML'">Produtos</li>
+                    <li class="menu-item" onclick="window.location.href='./MANUTENÇÃOCOLABORADORES.HTML'">Colaboradores</li>
                 </ul>
             </div>
             
-            <div class="menu-item item-buscavel" onclick="abrirTelaEmCheia('tela-entrada-estoque')">
-                <span>Entrada de Notas / Estoque</span> <span class="atalho-teclado">F2</span>
-            </div>
-            
-            <div class="menu-item item-buscavel" onclick="alert('Módulo de Produtos em desenvolvimento...')">
-                <span>Produtos</span> <span class="atalho-teclado">F3</span>
-            </div>
         </div>
-
         <div class="workspace">
             
             <div id="tela-boas-vindas" style="padding: 20px;">
@@ -205,7 +222,6 @@
                 <p>Selecione uma opção no menu lateral ou use os Atalhos de Teclado (F1, F2...).</p>
             </div>
 
-            <!-- TELA: AREA DO CONTADOR -->
             <div id="tela-contador" class="window-panel">
                 <div class="window-title">
                     <span>Exportação XML e Consulta Sefaz</span>
@@ -218,10 +234,10 @@
                     <div class="left-col">
                         <div class="panel-header">Classificação</div>
                         <ul class="tree-view">
-                            <li class="tree-folder">&#128194; Notas fiscais</li>
-                            <li class="tree-item" onclick="carregarNotasFiscaisSefaz()">&#128462; SEFAZ / Focus NFe</li>
-                            <li class="tree-item" onclick="pesquisarNotas()">&#128462; PDV legado</li>
-                            <li class="tree-item" onclick="imprimirRelatorioNotas()">&#128424; Imprimir relatório</li>
+                            <li class="tree-folder">Notas fiscais</li>
+                            <li class="tree-item" onclick="carregarNotasFiscaisSefaz()">SEFAZ / Focus NFe</li>
+                            <li class="tree-item" onclick="pesquisarNotas()">PDV legado</li>
+                            <li class="tree-item" onclick="imprimirRelatorioNotas()">Imprimir relatório</li>
                         </ul>
                     </div>
 
@@ -289,17 +305,16 @@
                         <div class="footer-actions">
                             <div style="font-weight: bold; font-size: 11px;">Certificado: <select style="border:1px solid #ccc;"><option>A1 - Focus NFe</option></select></div>
                             <div class="action-buttons">
-                                <button class="btn-action" onclick="baixarXMLsEmZip()">&#128190; XMLs selecionados ZIP</button>
-                                <button class="btn-action" onclick="baixarDanfesEmZip()">&#128462; DANFEs selecionados ZIP</button>
-                                <button class="btn-action" onclick="baixarRelatorioCsv()">&#128196; Baixar CSV</button>
-                                <button class="btn-action" style="color: #6a1b9a; border-color: #6a1b9a;" onclick="imprimirRelatorioNotas()">&#128424; Imprimir relatório</button>
+                                <button class="btn-action" onclick="baixarXMLsEmZip()">XMLs selecionados ZIP</button>
+                                <button class="btn-action" onclick="baixarDanfesEmZip()">DANFEs selecionados ZIP</button>
+                                <button class="btn-action" onclick="baixarRelatorioCsv()">Baixar CSV</button>
+                                <button class="btn-action" style="color: #6a1b9a; border-color: #6a1b9a;" onclick="imprimirRelatorioNotas()">Imprimir relatório</button>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TELA: ENTRADA DE NOTAS E ESTOQUE -->
             <div id="tela-entrada-estoque" class="window-panel">
                 <div class="window-title">
                     <span>Lançamento de Nota de Entrada (Importação de XML)</span>
@@ -341,13 +356,12 @@
 
                         <div class="footer-actions" style="justify-content: flex-end; background: #eee;">
                             <span style="margin-right: 15px; font-size: 14px; font-weight: bold;">Total da Nota: R$ <span id="valorTotalNotaEntrada">0,00</span></span>
-                            <button class="btn-action" style="background: var(--bg-header); color: white; border: none; padding: 10px 20px;" onclick="salvarProdutosNoEstoque()">&#128427; Lançar no BD Desta Loja</button>
+                            <button class="btn-action" style="background: var(--bg-header); color: white; border: none; padding: 10px 20px;" onclick="salvarProdutosNoEstoque()">Lançar no BD Desta Loja</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- TELA: EMISSAO NFCE -->
             <div id="tela-nfe" class="window-panel" style="max-width: 500px; height: auto;">
                  <div class="window-title">
                     <span>Emissão Manual NFC-e</span>
@@ -494,7 +508,6 @@
             if (opcoesValidas.length === 1) {
                 selectLogin.value = opcoesValidas[0].value;
                 selectHeader.value = opcoesValidas[0].value;
-
             }
         }
 
@@ -512,8 +525,8 @@
             const msgStatus = document.getElementById('loginStatusMsg');
             const btn = document.getElementById('btnEntrar');
 
-            if (!urlSelecionada) { msgStatus.innerText = "Selecione uma filial com URL válida. Se a loja apareceu sem abrir, o cadastro central estava sem URL e foi aplicado o mapa local."; return; }
-            if (!user || !pass) { msgStatus.innerText = "Preencha usuário e senha."; return; }
+            if (!urlSelecionada) { msgStatus.innerText = "Atenção: Selecione uma filial com URL válida."; return; }
+            if (!user || !pass) { msgStatus.innerText = "Atenção: Preencha usuário e senha."; return; }
 
             msgStatus.innerText = "Aguarde, autenticando no banco da loja...";
             msgStatus.style.color = "#333";
@@ -531,7 +544,7 @@
                     nomeLojaAtiva = nomeDaLoja;
                     usuarioLogado = json.nome || user;
                     document.getElementById('seletorGlobalLoja').value = urlApiAtiva;
-                    document.getElementById('nomeUsuarioLogado').innerHTML = `&#128100; ${String(usuarioLogado).split(' ')[0]}`;
+                    document.getElementById('nomeUsuarioLogado').innerHTML = `Usuário: ${String(usuarioLogado).split(' ')[0]}`;
                     document.getElementById('lblLojaBoasVindas').innerText = nomeLojaAtiva;
                     const resumoLoja = document.getElementById('resumoLojaFiscal');
                     if (resumoLoja) resumoLoja.innerText = nomeLojaAtiva;
@@ -554,7 +567,7 @@
             const selectHeader = document.getElementById('seletorGlobalLoja');
             const urlEscolhida = selectHeader.value;
             if (urlEscolhida !== urlApiAtiva) {
-                alert("A troca de loja exige nova autenticação por segurança. Cada loja consulta apenas seu próprio banco de dados.");
+                alert("Atenção: A troca de loja exige nova autenticação por segurança. Cada loja consulta apenas seu próprio banco de dados.");
                 sairDoSistema(urlEscolhida);
             }
         }
@@ -671,81 +684,82 @@
         function idSeguroNota(nota, indice) {
             return btoa(unescape(encodeURIComponent(`${nota.referencia || ''}|${nota.chave_acesso || ''}|${nota.numero || ''}|${indice}`))).replace(/=/g, '');
         }
-function extrairChaveAcesso44(valor) {
-    const texto = limparTexto(valor).trim().replace(/^(NFe|NFCe|CTe)/i, '');
-    const match = texto.match(/\d{44}/);
-    return match ? match[0] : '';
-}
+        
+        function extrairChaveAcesso44(valor) {
+            const texto = limparTexto(valor).trim().replace(/^(NFe|NFCe|CTe)/i, '');
+            const match = texto.match(/\d{44}/);
+            return match ? match[0] : '';
+        }
 
-function removerPrefixoDocumentoFiscal(valor) {
-    return limparTexto(valor).trim().replace(/^(NFe|NFCe|CTe)/i, '');
-}
+        function removerPrefixoDocumentoFiscal(valor) {
+            return limparTexto(valor).trim().replace(/^(NFe|NFCe|CTe)/i, '');
+        }
 
-function detectarTipoDocumentoFiscal(nota) {
-    const tipoInformado = limparTexto(nota?.tipo_documento).trim();
-    if (tipoInformado) return tipoInformado;
+        function detectarTipoDocumentoFiscal(nota) {
+            const tipoInformado = limparTexto(nota?.tipo_documento).trim();
+            if (tipoInformado) return tipoInformado;
 
-    const chave = extrairChaveAcesso44(nota?.chave_acesso || nota?.referencia);
-    const modelo = chave ? chave.substring(20, 22) : '';
+            const chave = extrairChaveAcesso44(nota?.chave_acesso || nota?.referencia);
+            const modelo = chave ? chave.substring(20, 22) : '';
 
-    if (modelo === '65') return 'NFC-e';
-    if (modelo === '55') return 'NF-e';
-    if (modelo === '57') return 'CT-e';
+            if (modelo === '65') return 'NFC-e';
+            if (modelo === '55') return 'NF-e';
+            if (modelo === '57') return 'CT-e';
 
-    return 'NF-e';
-}
+            return 'NF-e';
+        }
 
-function obterIdentificadorFiscalPrincipal(nota) {
-    return limparTexto(
-        nota?.referencia ||
-        nota?.chave_acesso ||
-        nota?.numero ||
-        ''
-    ).trim();
-}
+        function obterIdentificadorFiscalPrincipal(nota) {
+            return limparTexto(
+                nota?.referencia ||
+                nota?.chave_acesso ||
+                nota?.numero ||
+                ''
+            ).trim();
+        }
 
-function montarCandidatosDownloadFiscal(nota) {
-    const referencia = limparTexto(nota?.referencia).trim();
-    const chave = extrairChaveAcesso44(nota?.chave_acesso || nota?.referencia);
-    const numero = limparTexto(nota?.numero).trim();
+        function montarCandidatosDownloadFiscal(nota) {
+            const referencia = limparTexto(nota?.referencia).trim();
+            const chave = extrairChaveAcesso44(nota?.chave_acesso || nota?.referencia);
+            const numero = limparTexto(nota?.numero).trim();
 
-    return Array.from(new Set([
-        referencia,
-        chave,
-        referencia ? removerPrefixoDocumentoFiscal(referencia) : '',
-        numero
-    ].filter(Boolean)));
-}
+            return Array.from(new Set([
+                referencia,
+                chave,
+                referencia ? removerPrefixoDocumentoFiscal(referencia) : '',
+                numero
+            ].filter(Boolean)));
+        }
 
-function criarNotaFiscalMinima(referencia) {
-    const chave = extrairChaveAcesso44(referencia);
-    const item = {
-        id: '',
-        loja: nomeLojaAtiva,
-        tipo_movimento: 'Saída',
-        origem: 'CONSULTA_DOWNLOAD',
-        tipo_documento: detectarTipoDocumentoFiscal({ referencia, chave_acesso: chave }),
-        serie: '',
-        numero: '',
-        referencia: limparTexto(referencia).trim(),
-        data_emissao: '',
-        valor_total: 0,
-        chave_acesso: chave,
-        protocolo: '',
-        status: '',
-        mensagem_sefaz: '',
-        url_xml: '',
-        url_danfe: '',
-        url_qrcode: '',
-        nome_destinatario: '',
-        cpf_cnpj_destinatario: '',
-        cnpj_emitente: '',
-        ultima_atualizacao: ''
-    };
+        function criarNotaFiscalMinima(referencia) {
+            const chave = extrairChaveAcesso44(referencia);
+            const item = {
+                id: '',
+                loja: nomeLojaAtiva,
+                tipo_movimento: 'Saída',
+                origem: 'CONSULTA_DOWNLOAD',
+                tipo_documento: detectarTipoDocumentoFiscal({ referencia, chave_acesso: chave }),
+                serie: '',
+                numero: '',
+                referencia: limparTexto(referencia).trim(),
+                data_emissao: '',
+                valor_total: 0,
+                chave_acesso: chave,
+                protocolo: '',
+                status: '',
+                mensagem_sefaz: '',
+                url_xml: '',
+                url_danfe: '',
+                url_qrcode: '',
+                nome_destinatario: '',
+                cpf_cnpj_destinatario: '',
+                cnpj_emitente: '',
+                ultima_atualizacao: ''
+            };
 
-    item.id = idSeguroNota(item, 0);
-    return item;
-}
+            item.id = idSeguroNota(item, 0);
+            return item;
+        }
 
         function badgeStatus(status) {
             const normal = normalizarStatusFiscal(status);
@@ -968,25 +982,25 @@ function criarNotaFiscalMinima(referencia) {
         }
 
         function montarPayloadDownloadFiscal(nota, tipo, acaoForcada) {
-    const referenciaPrincipal = obterIdentificadorFiscalPrincipal(nota);
-    const chave = extrairChaveAcesso44(nota.chave_acesso || nota.referencia);
-    const candidatos = montarCandidatosDownloadFiscal(nota);
+            const referenciaPrincipal = obterIdentificadorFiscalPrincipal(nota);
+            const chave = extrairChaveAcesso44(nota.chave_acesso || nota.referencia);
+            const candidatos = montarCandidatosDownloadFiscal(nota);
 
-    return {
-        acao: acaoForcada || (tipo === 'danfe' ? 'baixar_danfe' : 'baixar_xml'),
-        tipo_arquivo: tipo,
-        referencia: referenciaPrincipal,
-        identificador: referenciaPrincipal,
-        chave_acesso: chave,
-        chave: chave,
-        candidatos_download_fiscal: candidatos,
-        tipo_documento: detectarTipoDocumentoFiscal(nota),
-        url: tipo === 'danfe' ? (nota.url_danfe || '') : (nota.url_xml || ''),
-        numero: nota.numero || '',
-        serie: nota.serie || '',
-        loja: nomeLojaAtiva || ''
-    };
-}
+            return {
+                acao: acaoForcada || (tipo === 'danfe' ? 'baixar_danfe' : 'baixar_xml'),
+                tipo_arquivo: tipo,
+                referencia: referenciaPrincipal,
+                identificador: referenciaPrincipal,
+                chave_acesso: chave,
+                chave: chave,
+                candidatos_download_fiscal: candidatos,
+                tipo_documento: detectarTipoDocumentoFiscal(nota),
+                url: tipo === 'danfe' ? (nota.url_danfe || '') : (nota.url_xml || ''),
+                numero: nota.numero || '',
+                serie: nota.serie || '',
+                loja: nomeLojaAtiva || ''
+            };
+        }
 
         function formatarTentativasDownload(tentativas) {
             if (!Array.isArray(tentativas) || !tentativas.length) return '';
@@ -1056,21 +1070,21 @@ function criarNotaFiscalMinima(referencia) {
         }
 
         async function baixarXMLUnico(referencia) {
-    const refLimpa = limparTexto(referencia).trim();
+            const refLimpa = limparTexto(referencia).trim();
 
-    const nota = notasFiscaisCarregadas.find(n =>
-        n.referencia === refLimpa ||
-        n.chave_acesso === refLimpa ||
-        extrairChaveAcesso44(n.chave_acesso) === extrairChaveAcesso44(refLimpa) ||
-        n.id === refLimpa
-    );
+            const nota = notasFiscaisCarregadas.find(n =>
+                n.referencia === refLimpa ||
+                n.chave_acesso === refLimpa ||
+                extrairChaveAcesso44(n.chave_acesso) === extrairChaveAcesso44(refLimpa) ||
+                n.id === refLimpa
+            );
 
-    if (nota) return baixarArquivoFiscal(nota.id, 'xml');
+            if (nota) return baixarArquivoFiscal(nota.id, 'xml');
 
-    const item = criarNotaFiscalMinima(refLimpa);
-    mapaNotasPorId.set(item.id, item);
-    return baixarArquivoFiscal(item.id, 'xml');
-}
+            const item = criarNotaFiscalMinima(refLimpa);
+            mapaNotasPorId.set(item.id, item);
+            return baixarArquivoFiscal(item.id, 'xml');
+        }
 
         async function baixarXMLsEmZip() {
             return baixarArquivosSelecionadosZip('xml');
@@ -1217,13 +1231,10 @@ function criarNotaFiscalMinima(referencia) {
 
         function abrirJanelaImpressao(conteudo) {
             const w = window.open('', '_blank');
-            
-            // VERIFICAÇÃO CONTRA BLOQUEADOR DE POP-UP
             if (!w) {
-                alert("⚠️ O SEU NAVEGADOR BLOQUEOU O RELATÓRIO!\n\nPor favor, olhe no canto superior direito da barra de endereços, clique no ícone de pop-up com um 'X' vermelho, marque 'Sempre permitir pop-ups deste site' e tente novamente.");
+                alert("Atenção: O seu navegador bloqueou o relatório!\n\nPor favor, olhe no canto superior direito da barra de endereços, clique no ícone de pop-up com um 'X' vermelho, marque 'Sempre permitir pop-ups deste site' e tente novamente.");
                 return;
             }
-            
             w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Relatório Fiscal</title>
                 <style>body{font-family:Arial,sans-serif;font-size:12px;color:#222} h2{color:#f38220} table{width:100%;border-collapse:collapse;margin-top:10px} th{background:#f38220;color:#fff;text-align:left} th,td{border:1px solid #ccc;padding:5px;vertical-align:top} @media print{button{display:none}}</style>
                 </head><body>${conteudo}<p style="margin-top:20px;color:#777;">Gerado em ${new Date().toLocaleString('pt-BR')} pelo módulo fiscal multiloja.</p><button onclick="window.print()">Imprimir</button></body></html>`);
@@ -1320,7 +1331,7 @@ function criarNotaFiscalMinima(referencia) {
                     document.getElementById('arquivoXmlEntrada').value = '';
                 } else alert('Erro: ' + retorno.mensagem);
             } catch (error) { alert('Erro de comunicação.'); }
-            finally { btn.innerHTML = '&#128427; Lançar no BD Desta Loja'; btn.disabled = false; }
+            finally { btn.innerHTML = 'Lançar no BD Desta Loja'; btn.disabled = false; }
         }
     </script>
 </body>
