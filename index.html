@@ -494,6 +494,7 @@
             if (opcoesValidas.length === 1) {
                 selectLogin.value = opcoesValidas[0].value;
                 selectHeader.value = opcoesValidas[0].value;
+
             }
         }
 
@@ -670,6 +671,81 @@
         function idSeguroNota(nota, indice) {
             return btoa(unescape(encodeURIComponent(`${nota.referencia || ''}|${nota.chave_acesso || ''}|${nota.numero || ''}|${indice}`))).replace(/=/g, '');
         }
+function extrairChaveAcesso44(valor) {
+    const texto = limparTexto(valor).trim().replace(/^(NFe|NFCe|CTe)/i, '');
+    const match = texto.match(/\d{44}/);
+    return match ? match[0] : '';
+}
+
+function removerPrefixoDocumentoFiscal(valor) {
+    return limparTexto(valor).trim().replace(/^(NFe|NFCe|CTe)/i, '');
+}
+
+function detectarTipoDocumentoFiscal(nota) {
+    const tipoInformado = limparTexto(nota?.tipo_documento).trim();
+    if (tipoInformado) return tipoInformado;
+
+    const chave = extrairChaveAcesso44(nota?.chave_acesso || nota?.referencia);
+    const modelo = chave ? chave.substring(20, 22) : '';
+
+    if (modelo === '65') return 'NFC-e';
+    if (modelo === '55') return 'NF-e';
+    if (modelo === '57') return 'CT-e';
+
+    return 'NF-e';
+}
+
+function obterIdentificadorFiscalPrincipal(nota) {
+    return limparTexto(
+        nota?.referencia ||
+        nota?.chave_acesso ||
+        nota?.numero ||
+        ''
+    ).trim();
+}
+
+function montarCandidatosDownloadFiscal(nota) {
+    const referencia = limparTexto(nota?.referencia).trim();
+    const chave = extrairChaveAcesso44(nota?.chave_acesso || nota?.referencia);
+    const numero = limparTexto(nota?.numero).trim();
+
+    return Array.from(new Set([
+        referencia,
+        chave,
+        referencia ? removerPrefixoDocumentoFiscal(referencia) : '',
+        numero
+    ].filter(Boolean)));
+}
+
+function criarNotaFiscalMinima(referencia) {
+    const chave = extrairChaveAcesso44(referencia);
+    const item = {
+        id: '',
+        loja: nomeLojaAtiva,
+        tipo_movimento: 'Saída',
+        origem: 'CONSULTA_DOWNLOAD',
+        tipo_documento: detectarTipoDocumentoFiscal({ referencia, chave_acesso: chave }),
+        serie: '',
+        numero: '',
+        referencia: limparTexto(referencia).trim(),
+        data_emissao: '',
+        valor_total: 0,
+        chave_acesso: chave,
+        protocolo: '',
+        status: '',
+        mensagem_sefaz: '',
+        url_xml: '',
+        url_danfe: '',
+        url_qrcode: '',
+        nome_destinatario: '',
+        cpf_cnpj_destinatario: '',
+        cnpj_emitente: '',
+        ultima_atualizacao: ''
+    };
+
+    item.id = idSeguroNota(item, 0);
+    return item;
+}
 
         function badgeStatus(status) {
             const normal = normalizarStatusFiscal(status);
@@ -892,17 +968,25 @@
         }
 
         function montarPayloadDownloadFiscal(nota, tipo, acaoForcada) {
-            return {
-                acao: acaoForcada || (tipo === 'danfe' ? 'baixar_danfe' : 'baixar_xml'),
-                referencia: nota.referencia || nota.chave_acesso || nota.numero || '',
-                chave_acesso: nota.chave_acesso || '',
-                tipo_documento: nota.tipo_documento || '',
-                url: tipo === 'danfe' ? (nota.url_danfe || '') : (nota.url_xml || ''),
-                numero: nota.numero || '',
-                serie: nota.serie || '',
-                loja: nomeLojaAtiva || ''
-            };
-        }
+    const referenciaPrincipal = obterIdentificadorFiscalPrincipal(nota);
+    const chave = extrairChaveAcesso44(nota.chave_acesso || nota.referencia);
+    const candidatos = montarCandidatosDownloadFiscal(nota);
+
+    return {
+        acao: acaoForcada || (tipo === 'danfe' ? 'baixar_danfe' : 'baixar_xml'),
+        tipo_arquivo: tipo,
+        referencia: referenciaPrincipal,
+        identificador: referenciaPrincipal,
+        chave_acesso: chave,
+        chave: chave,
+        candidatos_download_fiscal: candidatos,
+        tipo_documento: detectarTipoDocumentoFiscal(nota),
+        url: tipo === 'danfe' ? (nota.url_danfe || '') : (nota.url_xml || ''),
+        numero: nota.numero || '',
+        serie: nota.serie || '',
+        loja: nomeLojaAtiva || ''
+    };
+}
 
         function formatarTentativasDownload(tentativas) {
             if (!Array.isArray(tentativas) || !tentativas.length) return '';
@@ -972,13 +1056,21 @@
         }
 
         async function baixarXMLUnico(referencia) {
-            const nota = notasFiscaisCarregadas.find(n => n.referencia === referencia || n.chave_acesso === referencia || n.id === referencia);
-            if (nota) return baixarArquivoFiscal(nota.id, 'xml');
-            const fakeId = idSeguroNota({ referencia }, 0);
-            const item = { id: fakeId, referencia, tipo_documento: 'NFC-e' };
-            mapaNotasPorId.set(fakeId, item);
-            return baixarArquivoFiscal(fakeId, 'xml');
-        }
+    const refLimpa = limparTexto(referencia).trim();
+
+    const nota = notasFiscaisCarregadas.find(n =>
+        n.referencia === refLimpa ||
+        n.chave_acesso === refLimpa ||
+        extrairChaveAcesso44(n.chave_acesso) === extrairChaveAcesso44(refLimpa) ||
+        n.id === refLimpa
+    );
+
+    if (nota) return baixarArquivoFiscal(nota.id, 'xml');
+
+    const item = criarNotaFiscalMinima(refLimpa);
+    mapaNotasPorId.set(item.id, item);
+    return baixarArquivoFiscal(item.id, 'xml');
+}
 
         async function baixarXMLsEmZip() {
             return baixarArquivosSelecionadosZip('xml');
