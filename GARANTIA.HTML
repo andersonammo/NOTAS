@@ -60,19 +60,23 @@
             </div>
             
             <div class="row">
-                <div class="field">
-                    <label>Vendedor / Colaborador:</label>
-                    <input type="text" name="vendedor" id="vendedor" placeholder="Quem atendeu" required>
-                </div>
-                <div class="field">
-                    <label>Data da Compra:</label>
-                    <input type="date" name="data_compra" id="data_compra" required>
-                </div>
-                <div class="field">
-                    <label>Data Envio p/ Garantia:</label>
-                    <input type="date" name="data_envio" id="data_envio" required>
-                </div>
-            </div>
+    <div class="field">
+        <label>Vendedor / Colaborador:</label>
+        <input type="text" name="vendedor" id="vendedor" placeholder="Quem atendeu" required>
+    </div>
+    <div class="field">
+        <label>Data da Compra:</label>
+        <input type="date" name="data_compra" id="data_compra" required>
+    </div>
+    <div class="field">
+        <label>Data Envio p/ Garantia:</label>
+        <input type="date" name="data_envio" id="data_envio" required>
+    </div>
+    <div class="field">
+        <label>Data de Retirada do Cliente:</label>
+        <input type="date" name="data_retirada_cliente" id="data_retirada_cliente" required>
+    </div>
+</div>
 
             <div class="row">
                 <div class="field" style="flex: 1;">
@@ -98,13 +102,14 @@
     </div>
 
     <div class="footer-navbar">
-        <div class="action-group">
-            <div class="nav-item" onclick="novoRegistro()">📄 Nova Garantia</div>
-            <div class="nav-item" onclick="localizarGarantia()">🔍 Localizar Garantia</div>
-        </div>
-        <div>
-            <button type="submit" form="garantiaForm" class="btn-save" id="btnSalvar">💾 Gravar no Banco de Garantias</button>
-        </div>
+    <div class="action-group">
+        <div class="nav-item" onclick="window.location.href='./index.html'">⬅️ Voltar</div>
+        <div class="nav-item" onclick="novoRegistro()">📄 Nova Garantia</div>
+        <div class="nav-item" onclick="localizarGarantia()">🔍 Localizar Garantia</div>
+        <div class="nav-item" onclick="gerarRelatorioGarantiaPDF()">📥 Baixar Relatório PDF</div>
+    </div>
+    <div>
+        <button type="submit" form="garantiaForm" class="btn-save" id="btnSalvar">💾 Gravar no Banco de Garantias</button>
     </div>
 </div>
 
@@ -172,8 +177,9 @@
                 document.getElementById('referencia_produto').value = res.dados.referencia || "";
                 document.getElementById('observacao').value = res.dados.observacao || "";
                 
-                if(res.dados.compra) document.getElementById('data_compra').value = res.dados.compra.substring(0, 10);
-                if(res.dados.envio) document.getElementById('data_envio').value = res.dados.envio.substring(0, 10);
+               if(res.dados.compra) document.getElementById('data_compra').value = res.dados.compra.substring(0, 10);
+if(res.dados.envio) document.getElementById('data_envio').value = res.dados.envio.substring(0, 10);
+if(res.dados.entrega) document.getElementById('data_retirada_cliente').value = res.dados.entrega.substring(0, 10);
 
                 document.querySelectorAll('input').forEach(i => i.readOnly = true);
                 document.getElementById('btnSalvar').style.display = 'none';
@@ -206,6 +212,174 @@
         })
         .catch(err => alert("Erro ao processar baixa."));
     }
+function gerarRelatorioGarantiaPDF() {
+    const os = document.getElementById('num_os').value.trim();
+    const cliente = document.getElementById('nome_cliente').value.trim();
+    const vendedor = document.getElementById('vendedor').value.trim();
+    const dataCompra = document.getElementById('data_compra').value;
+    const dataEnvio = document.getElementById('data_envio').value;
+    const dataRetirada = document.getElementById('data_retirada_cliente').value;
+    const referencia = document.getElementById('referencia_produto').value.trim();
+    const observacao = document.getElementById('observacao').value.trim();
+
+    if (!os || !cliente) {
+        alert("Preencha pelo menos a O.S. e o nome do cliente antes de gerar o relatório.");
+        return;
+    }
+
+    const logoUrl = "file:///C:/Users/Usu%C3%A1rio/Downloads/Untitled%20design%20(2).png";
+
+    const janela = window.open('', '_blank');
+
+    if (!janela) {
+        alert("O navegador bloqueou a janela do relatório. Permita pop-ups para este arquivo/site.");
+        return;
+    }
+
+    janela.document.write(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Relatório de Garantia - ${os}</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    color: #222;
+                    padding: 30px;
+                    font-size: 13px;
+                }
+
+                .topo {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    border-bottom: 3px solid #f28b30;
+                    padding-bottom: 15px;
+                    margin-bottom: 25px;
+                }
+
+                .topo img {
+                    max-width: 220px;
+                    max-height: 90px;
+                    object-fit: contain;
+                }
+
+                h1 {
+                    color: #f28b30;
+                    font-size: 22px;
+                    margin: 0;
+                    text-align: right;
+                }
+
+                table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 15px;
+                }
+
+                th {
+                    background: #f28b30;
+                    color: white;
+                    text-align: left;
+                    padding: 9px;
+                    width: 28%;
+                }
+
+                td {
+                    border: 1px solid #ccc;
+                    padding: 9px;
+                }
+
+                .assinaturas {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 40px;
+                    margin-top: 70px;
+                }
+
+                .assinatura {
+                    flex: 1;
+                    text-align: center;
+                    border-top: 1px solid #333;
+                    padding-top: 8px;
+                    font-size: 12px;
+                }
+
+                .obs {
+                    min-height: 70px;
+                    vertical-align: top;
+                }
+
+                .rodape {
+                    margin-top: 35px;
+                    color: #777;
+                    font-size: 11px;
+                    text-align: center;
+                }
+
+                .btn-print {
+                    margin-top: 25px;
+                    padding: 12px 20px;
+                    background: #f28b30;
+                    color: white;
+                    border: none;
+                    cursor: pointer;
+                    font-weight: bold;
+                    border-radius: 4px;
+                }
+
+                @media print {
+                    .btn-print { display: none; }
+                    body { padding: 10px; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="topo">
+                <img src="${logoUrl}" alt="Óticas Ammo">
+                <h1>Solicitação de Garantia</h1>
+            </div>
+
+            <table>
+                <tr><th>Número da O.S.</th><td>${os}</td></tr>
+                <tr><th>Cliente</th><td>${cliente}</td></tr>
+                <tr><th>Vendedor / Colaborador</th><td>${vendedor}</td></tr>
+                <tr><th>Data da Compra</th><td>${formatarDataRelatorio(dataCompra)}</td></tr>
+                <tr><th>Data Envio p/ Garantia</th><td>${formatarDataRelatorio(dataEnvio)}</td></tr>
+                <tr><th>Data de Retirada do Cliente</th><td>${formatarDataRelatorio(dataRetirada)}</td></tr>
+                <tr><th>Referência do Produto</th><td>${referencia}</td></tr>
+                <tr><th>Observações / Motivo</th><td class="obs">${observacao || '-'}</td></tr>
+            </table>
+
+            <div class="assinaturas">
+                <div class="assinatura">Assinatura do Cliente</div>
+                <div class="assinatura">Responsável pelo Atendimento</div>
+            </div>
+
+            <div class="rodape">
+                Documento gerado em ${new Date().toLocaleString('pt-BR')} - SaaSERP Garantias
+            </div>
+
+            <button class="btn-print" onclick="window.print()">Salvar / Baixar em PDF</button>
+        </body>
+        </html>
+    `);
+
+    janela.document.close();
+    janela.focus();
+
+    setTimeout(() => {
+        janela.print();
+    }, 500);
+}
+
+function formatarDataRelatorio(dataIso) {
+    if (!dataIso) return '-';
+    const partes = dataIso.split('-');
+    if (partes.length !== 3) return dataIso;
+    return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
 </script>
 </body>
 </html>
